@@ -1,0 +1,18 @@
+{
+  "name": "gkzy-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "智愿 · 高考志愿填报（云端版）—— Express 后端 + 原生前端 + SQLite（Node 内置 node:sqlite，零编译）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init": "node init_db.js && node init_v2.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.22.3"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
