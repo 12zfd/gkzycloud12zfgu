@@ -1,0 +1,27 @@
+# 统一换行符与文本判定 —— 防止 Windows/Linux 之间换行差异造成"看起来全改了"
+* text=auto eol=lf
+
+# 明确文本文件（提交时把 CRLF 归一为 LF，检出时保持 LF）
+*.html   text
+*.css    text
+*.js     text
+*.mjs    text
+*.json   text
+*.sql    text
+*.md     text
+*.yml    text
+*.yaml   text
+Dockerfile text
+
+# 二进制：不做任何换行/编码转换
+*.db     binary
+*.sqlite binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.webp   binary
+*.ico    binary
+*.zip    binary
+
+# 注意：本项目含大量中文源码与 SQL，全部必须为 UTF-8 无 BOM。
+# 禁止使用可视化编辑器直接回写 index.html（会注入 data-page-node-id，破坏基线计数）。

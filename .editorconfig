@@ -1,0 +1,17 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# SQL 多为手写对齐，保留行尾空格以免制造无意义 diff
+[*.sql]
+trim_trailing_whitespace = false
+
+# Markdown 的行尾双空格是换行语法，不能裁
+[*.md]
+trim_trailing_whitespace = false
