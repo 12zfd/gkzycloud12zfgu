@@ -397,6 +397,15 @@ app.get('/api/health', safe((req, res) => {
                      ? db.prepare('SELECT COUNT(*) AS n FROM admission_scores').get().n
                      : 0,
       users:       db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
+      /* —— 可验证性（阶段 0 验收暴露的缺口）——
+       * Render 部署时会注入 RENDER_GIT_COMMIT / RENDER_GIT_BRANCH，
+       * 把它回显出来，就能从外部一眼确认「线上跑的是哪个提交」，
+       * 不必再靠数据库计数、时区这类间接信号去猜。
+       * 本地 direct-run 时这两个变量不存在，回落 'local'。 */
+      commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local',
+      branch: process.env.RENDER_GIT_BRANCH || 'local',
+      /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演 */
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
       time: new Date().toLocaleString('zh-CN')
     }
   });
