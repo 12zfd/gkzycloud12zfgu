@@ -23,6 +23,8 @@ const express = require('express');
 const pg = require('../repo/pg');
 const ct = require('../services/careerTranslate');
 const ApiError = ct.DomainError;
+const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
 
 const router = express.Router();
 
@@ -405,6 +407,258 @@ router.put('/family-messages/:id/folded', ah(async (req, res) => {
     [folded, id, uid]
   );
   res.json({ code: 200, data: { saved: { id: updated.id, folded: updated.folded } } });
+}));
+
+/* ===========================================================================
+ * EP-13 / EP-14 / EP-15 —— 双志愿表对比（W4，方案 (e) 跨库应用层拼装）
+ * ---------------------------------------------------------------------------
+ * 数据源裁决（契约 §12.8 最终版）：
+ *   - 学生侧：只读容器 SQLite `volunteers`（SQLite 无 owner_role 列，行一律视作
+ *     owner_role='student'；不为 SQLite 加列、不改 init_db.js / init_v2.js）。
+ *   - 父/母/老师侧：读写 PG `public.volunteers`（带 owner_role；唯一键
+ *     (user_id, owner_role, kind, ref_id)）。
+ *   - 两库只在应用层合并，禁 SQL JOIN；两侧行都自带 name/province/city/level/
+ *     type/score/adjusted_score，直接读存储列，colleges/majors 仅在补缺时查。
+ * ========================================================================= */
+
+/* ---------- 容器 SQLite 只读连接（与 server.js 共用同一 gkzy.db 文件） ---------- */
+let _sqlite = null;
+function sqliteDb() {
+  if (_sqlite) return _sqlite;
+  try {
+    const file = path.join(__dirname, '..', 'gkzy.db');
+    _sqlite = new DatabaseSync(file, { readOnly: true });
+  } catch (e) {
+    _sqlite = null;
+  }
+  return _sqlite;
+}
+
+const ROLES = ['student', 'father', 'mother', 'teacher'];
+const ROLE_ORDER = { student: 0, father: 1, mother: 2, teacher: 3 };
+
+/* ---------- 志愿行整形（唯一 snake→返回体映射落点，routes-d 内） ---------- */
+function shapeVolRow(row, ownerRole) {
+  return {
+    owner_role: ownerRole,
+    kind: row.kind,
+    ref_id: row.ref_id,
+    name: row.name || '',
+    province: row.province || '',
+    city: row.city || '',
+    level: row.level || '',
+    type: row.type || '',
+    score: Number(row.score) || 0,
+    adjusted_score: Number(row.adjusted_score) || 0
+  };
+}
+
+/* ---------- 取数（单角色）：student→SQLite，其余→PG ---------- */
+async function loadRoleVolunteers(uid, role) {
+  if (role === 'student') {
+    const db = sqliteDb();
+    let rows = [];
+    if (db) {
+      try {
+        rows = db.prepare('SELECT * FROM volunteers WHERE user_id = ? ORDER BY id ASC').all(uid);
+      } catch (e) { rows = []; }
+    }
+    return rows.map(r => shapeVolRow(r, 'student'));
+  }
+  const rows = await pg.query(
+    'SELECT * FROM public.volunteers WHERE user_id = $1 AND owner_role = $2 ORDER BY kind ASC, ref_id ASC',
+    [uid, role]
+  );
+  return rows.map(r => shapeVolRow(r, role));
+}
+
+/* ---------- 取数（非学生三角色一次性） ---------- */
+async function loadNonStudentVolunteers(uid) {
+  const rows = await pg.query(
+    'SELECT * FROM public.volunteers WHERE user_id = $1 AND owner_role = ANY($2) ORDER BY owner_role ASC, kind ASC, ref_id ASC',
+    [uid, ['father', 'mother', 'teacher']]
+  );
+  return rows.map(r => shapeVolRow(r, r.owner_role));
+}
+
+function sortByRoleThenKey(list) {
+  list.sort((a, b) => {
+    const ro = (ROLE_ORDER[a.owner_role] || 0) - (ROLE_ORDER[b.owner_role] || 0);
+    if (ro !== 0) return ro;
+    if (a.kind !== b.kind) return a.kind < b.kind ? -1 : 1;
+    return (Number(a.ref_id) || 0) - (Number(b.ref_id) || 0);
+  });
+  return list;
+}
+
+/* ===========================================================================
+ * EP-13 GET /api/family-volunteers —— 读某角色（或全部角色）的志愿表
+ * ---------------------------------------------------------------------------
+ * ★ 偏差（契约 §12.5 / §12.8 显式接受）：L3 规定 PG 不可达 → 整个 D 域 503。
+ *   但本端点「显式 owner_role='student'」时只需 SQLite，根本不依赖 PG；若照字面
+ *   返回 503，会让方案 (e) 的「学生侧读容器 SQLite」这条最常见主线被 L3 假死。
+ *   故：显式 owner_role='student' → 只查 SQLite，PG.isReady()===false 也正常 200；
+ *        缺省（四角色全量）或含非学生角色 → 走现成 notReady(res) 503。
+ *   不新增响应字段、不加 degraded 标志、不改 notReady()。
+ * ========================================================================= */
+router.get('/family-volunteers', ah(async (req, res) => {
+  const uid = requireUid(req);
+  if (uid === null) return fail(res, 400, '[E_IDENTITY_MISSING] 缺少 userId');
+  const role = req.query.owner_role;
+  if (role != null && role !== '' && !ROLES.includes(role)) {
+    return fail(res, 400, '[E_ROLE_INVALID] owner_role 非法');
+  }
+
+  let list;
+  if (role === 'student') {
+    // 仅学生侧：只读 SQLite，不依赖 PG
+    list = await loadRoleVolunteers(uid, 'student');
+  } else if (role) {
+    // 显式非学生角色：需 PG
+    if (!pg.isReady()) return notReady(res);
+    list = await loadRoleVolunteers(uid, role);
+  } else {
+    // 缺省：四角色全量（SQLite 学生 + PG 非学生），需 PG
+    if (!pg.isReady()) return notReady(res);
+    const student = await loadRoleVolunteers(uid, 'student');
+    const others = await loadNonStudentVolunteers(uid);
+    list = student.concat(others);
+  }
+
+  sortByRoleThenKey(list);
+  const { page, size, offset } = paging(req.query);
+  const total = list.length;
+  const paged = list.slice(offset, offset + size);
+  ok(res, paged, total, page, size);
+}));
+
+/* ===========================================================================
+ * EP-14 GET /api/family-volunteers/compare —— 双志愿表对比（role_a vs role_b）
+ *   纯派生、绝不落库；对齐键 (kind, ref_id)；三桶稳定排序；单体信封。
+ * ========================================================================= */
+router.get('/family-volunteers/compare', ah(async (req, res) => {
+  const uid = requireUid(req);
+  if (uid === null) return fail(res, 400, '[E_IDENTITY_MISSING] 缺少 userId');
+  const roleA = req.query.role_a;
+  const roleB = req.query.role_b;
+  if (!roleA || !roleB || !ROLES.includes(roleA) || !ROLES.includes(roleB)) {
+    return fail(res, 400, '[E_PARAM_INVALID] role_a / role_b 非法或缺失');
+  }
+  if (roleA === roleB) {
+    return fail(res, 400, '[E_PARAM_INVALID] role_a 与 role_b 不能相同');
+  }
+  // 任一非 student 角色即需 PG（两角色相等 student 已在前一步排除），故统一要求 PG
+  if (!pg.isReady()) return notReady(res);
+
+  const listA = await loadRoleVolunteers(uid, roleA);
+  const listB = await loadRoleVolunteers(uid, roleB);
+
+  const keyOf = r => String(r.kind) + ' ' + String(r.ref_id);
+  const mapA = new Map(listA.map(r => [keyOf(r), r]));
+  const mapB = new Map(listB.map(r => [keyOf(r), r]));
+  const keysA = new Set(mapA.keys());
+  const keysB = new Set(mapB.keys());
+
+  const onlyA = [];
+  const onlyB = [];
+  const both = [];
+  keysA.forEach(k => {
+    if (keysB.has(k)) {
+      const a = mapA.get(k), b = mapB.get(k);
+      const scoreDiffers = (a.score !== b.score) || (a.adjusted_score !== b.adjusted_score);
+      both.push({
+        kind: a.kind, ref_id: a.ref_id, name: a.name,
+        province: a.province, city: a.city, level: a.level, type: a.type,
+        score_a: a.score, score_b: b.score,
+        adjusted_score_a: a.adjusted_score, adjusted_score_b: b.adjusted_score,
+        score_differs: scoreDiffers
+      });
+    } else {
+      onlyA.push(a);
+    }
+  });
+  keysB.forEach(k => { if (!keysA.has(k)) onlyB.push(mapB.get(k)); });
+
+  const byKey = (x, y) => {
+    if (x.kind !== y.kind) return x.kind < y.kind ? -1 : 1;
+    return (Number(x.ref_id) || 0) - (Number(y.ref_id) || 0);
+  };
+  onlyA.sort(byKey); onlyB.sort(byKey); both.sort(byKey);
+
+  const counts = {
+    only_a: onlyA.length, only_b: onlyB.length, both: both.length,
+    total_a: listA.length, total_b: listB.length
+  };
+
+  res.json({ code: 200, data: { user_id: uid, role_a: roleA, role_b: roleB, only_a: onlyA, only_b: onlyB, both, counts } });
+}));
+
+/* ===========================================================================
+ * EP-15 POST /api/family-volunteers —— 写入某角色一条志愿（仅非 student，落 PG）
+ * ========================================================================= */
+router.post('/family-volunteers', ah(async (req, res) => {
+  const uid = requireUid(req);
+  if (uid === null) return fail(res, 400, '[E_IDENTITY_MISSING] 缺少 userId');
+  const body = req.body || {};
+  const ownerRole = body.owner_role;
+  if (!ownerRole || !ROLES.includes(ownerRole)) {
+    return fail(res, 400, '[E_ROLE_INVALID] owner_role 非法或缺失');
+  }
+  // ★ 死口径：学生侧写入只走既有 /api/upload，D 域不接受
+  if (ownerRole === 'student') {
+    return fail(res, 400, '[E_STUDENT_WRITE_VIA_MAIN] 学生侧写入只走既有 /api/upload，D 域不接受');
+  }
+  const kind = body.kind;
+  const refId = parseInt(body.refId, 10);
+  if (kind !== 'college' && kind !== 'major') {
+    return fail(res, 400, 'kind 只能是 college 或 major');
+  }
+  if (!Number.isInteger(refId) || refId <= 0) {
+    return fail(res, 400, 'refId 必须是正整数');
+  }
+  if (!pg.isReady()) return notReady(res);
+
+  // 名称/定位等权威字段从容器 SQLite 源表取（与既有 /api/upload 同口径）
+  const db = sqliteDb();
+  const table = kind === 'college' ? 'colleges' : 'majors';
+  let src = null;
+  if (db) { try { src = db.prepare('SELECT * FROM ' + table + ' WHERE id = ?').get(refId); } catch (e) {} }
+  if (!src) return fail(res, 404, '要加入志愿表的' + (kind === 'college' ? '院校' : '专业') + '不存在，id = ' + refId);
+
+  const adjRaw = body.payload && body.payload.adjustedScore;
+  const adjusted = (adjRaw != null) ? (Number(adjRaw) || 0) : (Number(src.score) || 0);
+
+  const payloadStr = (() => { try { return JSON.stringify(body.payload || {}).slice(0, 20000); } catch (e) { return '{}'; } })();
+
+  const cols = {
+    name: String(src.name || ''), province: String(src.province || ''),
+    city: String(src.city || ''), level: String(src.level || ''),
+    type: String(src.type || ''), score: Number(src.score) || 0, adjusted_score: adjusted
+  };
+
+  // upsert：唯一键 (user_id, owner_role, kind, ref_id)；冲突即更新、duplicated=true
+  const existing = await pg.queryOne(
+    'SELECT id FROM public.volunteers WHERE user_id = $1 AND owner_role = $2 AND kind = $3 AND ref_id = $4',
+    [uid, ownerRole, kind, refId]
+  );
+  let saved, duplicated;
+  if (existing) {
+    saved = await pg.queryOne(
+      'UPDATE public.volunteers SET name=$1, province=$2, city=$3, level=$4, type=$5, score=$6, adjusted_score=$7, payload=$8 WHERE id=$9 RETURNING *',
+      [cols.name, cols.province, cols.city, cols.level, cols.type, cols.score, cols.adjusted_score, payloadStr, existing.id]
+    );
+    duplicated = true;
+  } else {
+    saved = await pg.queryOne(
+      'INSERT INTO public.volunteers (user_id, owner_role, kind, ref_id, name, province, city, level, type, score, adjusted_score, payload) ' +
+      'VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *',
+      [uid, ownerRole, kind, refId, cols.name, cols.province, cols.city, cols.level, cols.type, cols.score, cols.adjusted_score, payloadStr]
+    );
+    duplicated = false;
+  }
+
+  const total = (await pg.queryOne('SELECT count(*)::int n FROM public.volunteers WHERE user_id = $1 AND owner_role = $2', [uid, ownerRole])).n;
+  res.json({ code: 200, data: { saved: shapeVolRow(saved, ownerRole), total, duplicated } });
 }));
 
 module.exports = router;

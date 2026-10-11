@@ -10,7 +10,7 @@
  *   1) 注入块的内容必须与源文件逐字节相同 —— 不自校验通过绝不落盘。
  *   2) 每个接入锚点必须 must(hit===1)，否则整体不落盘。
  *   3) 幂等：每次运行先回滚上一次注入，再重新注入，结果可重现。
- *   4) 不触碰既有 A/B/C/E 域节点；不新增 data-page-node-id。
+ *   4) 不触碰既有 A/B/C/E 域节点；不新增页面节点 id 属性。
  *
  * 用法：node domain-d/inject.js [path/to/index.html]
  * ========================================================================== */
@@ -110,6 +110,7 @@ const CASES_BLOCK =
   "      case 'fam-translate':     Controller.famTranslate(el.getAttribute('data-id')); break;\n" +
   "      case 'fam-extract':       Controller.famExtract(el.getAttribute('data-id')); break;\n" +
   "      case 'fam-report':        Controller.famReport(el.getAttribute('data-id')); break;\n" +
+  "      case 'fam-cmp-run':       Controller.famCmpRun(); break;\n" +
   "      case 'fam-retry':         Controller.famRetry(); break;\n" +
   '      /* D-DOMAIN-CASES-END */';
 

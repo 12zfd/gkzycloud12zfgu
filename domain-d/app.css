@@ -119,3 +119,36 @@
 .fam-msg .btn--ghost, .fam-banner .btn--ghost{ background:#F1F2F7; color:var(--ink-2,#5A5C74); }
 .fam-msg .btn--brand, .fam-banner .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
 .fam-msg .btn--danger{ background:#FDEEF0; color:#C0392B; }
+
+/* —— 双志愿表对比（EP-13/14/15 前端视图） —— */
+.fam-compare{ margin:14px 0 8px; padding:14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-compare-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+.fam-compare-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-compare-sub{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-compare-controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:12px; }
+.fam-cmp-label{ display:flex; flex-direction:column; gap:4px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-cmp-select{ padding:8px 10px; font-size:var(--t-sm,14px); border:1px solid #D9DCF7; border-radius:10px; background:#fff; color:var(--ink,#222); min-width:96px; }
+.fam-compare-controls .btn{ margin-left:auto; padding:8px 16px; }
+
+.fam-compare-result{ display:flex; flex-direction:column; gap:12px; }
+.fam-cmp-summary{ display:flex; flex-wrap:wrap; gap:8px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-cmp-summary span{ padding:4px 10px; background:#F7F8FC; border-radius:999px; }
+.fam-cmp-bucket{ border:1px solid #F1F2F7; border-radius:12px; padding:10px 12px; }
+.fam-cmp-bucket--a{ border-left:3px solid #4F46E5; }
+.fam-cmp-bucket--both{ border-left:3px solid #0E8A5F; }
+.fam-cmp-bucket--b{ border-left:3px solid #C24B86; }
+.fam-cmp-bucket-title{ font-size:var(--t-xs,11px); font-weight:600; color:var(--ink,#222); margin-bottom:8px; }
+.fam-cmp-empty{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); padding:6px 0; }
+.fam-cmp-item{ display:flex; align-items:center; gap:8px; padding:6px 0; border-top:1px solid #F4F5F9; font-size:var(--t-sm,14px); }
+.fam-cmp-item:first-of-type{ border-top:none; }
+.fam-cmp-kind{ flex:0 0 auto; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); text-transform:capitalize; }
+.fam-cmp-name{ flex:1 1 auto; color:var(--ink,#222); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fam-cmp-score{ flex:0 0 auto; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-cmp-item--diff .fam-cmp-score{ color:#C0392B; font-weight:600; }
+.fam-cmp-diff-flag{ margin-left:4px; padding:1px 6px; background:#FDEEF0; color:#C0392B; border-radius:999px; }
+
+/* 对比按钮复用 D 域按钮基调（避免依赖外部 .btn 实现） */
+.fam-compare .btn{ border:none; border-radius:10px; cursor:pointer; font-weight:500; background:var(--brand,#4F46E5); color:#fff; }
+.fam-compare .btn--ghost{ background:#F1F2F7; color:var(--ink-2,#5A5C74); }
+.fam-compare .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
+.fam-compare .btn--danger{ background:#FDEEF0; color:#C0392B; }

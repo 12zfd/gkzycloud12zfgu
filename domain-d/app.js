@@ -10,7 +10,7 @@
  *   3) 不写任何 on* 内联事件；所有交互只走 data-action + 派发表；
  *   4) setInterval 用于冷启动轮询（不在 setTimeout 行里带 fetch/load/plan/search）；
  *   5) data-action 与 case 'fam-*' 严格一一对应（双向覆盖，不可出现静默失效/死分支）；
- *   6) 不新增 data-page-node-id 属性（保持既有计数不变）；
+ *   6) 不新增页面节点 id 属性（保持既有节点计数不变）；
  *   7) 不读/不写 STORE_KEY 对象（roomId 走独立 localStorage 键，避免改动既有域）。
  *
  * 身份：复用既有前端用户选择 State.currentUserId（容器 SQLite /api/users，id 1/2），
@@ -62,6 +62,15 @@ function famEnsureView(){
         '</div>' +
         '<div class="fam-send-hint" id="fam-send-hint"></div>' +
       '</div>' +
+      '<div class="fam-compare" id="fam-compare">' +
+        '<div class="fam-compare-head"><b>双志愿表对比</b><span class="fam-compare-sub">只展示，不写入共识</span></div>' +
+        '<div class="fam-compare-controls">' +
+          '<label class="fam-cmp-label">角色 A<select id="fam-cmp-a" class="fam-cmp-select">' + famCmpOptions('student') + '</select></label>' +
+          '<label class="fam-cmp-label">角色 B<select id="fam-cmp-b" class="fam-cmp-select">' + famCmpOptions('father') + '</select></label>' +
+          '<button class="btn btn--brand" data-action="fam-cmp-run">对比</button>' +
+        '</div>' +
+        '<div class="fam-compare-result" id="fam-cmp-result"></div>' +
+      '</div>' +
     '</div>';
   var app = document.getElementById('app');
   if (app) app.appendChild(sec);
@@ -81,6 +90,17 @@ function famRenderRoles(){
   box.innerHTML = html;
 }
 if (typeof FAM === 'object') { FAM.role = 'student'; }
+
+/* ---------- 对比视图：角色下拉选项 ---------- */
+function famCmpOptions(selected){
+  var html = '';
+  for (var i = 0; i < FAM_ROLES.length; i++) {
+    var r = FAM_ROLES[i];
+    var sel = (r.code === selected) ? ' selected' : '';
+    html += '<option value="' + r.code + '"' + sel + '>' + r.label + '</option>';
+  }
+  return html;
+}
 
 /* ---------- 渲染：房间列表（EP-10） ---------- */
 function famRenderRooms(){
@@ -406,6 +426,32 @@ if (typeof Controller !== 'undefined') {
     famShowBanner(false);
     famLoadFamily(false);
   };
+  Controller.famCmpRun = function(){
+    var sa = document.getElementById('fam-cmp-a');
+    var sb = document.getElementById('fam-cmp-b');
+    var box = document.getElementById('fam-cmp-result');
+    if (!sa || !sb) return;
+    var ra = sa.value, rb = sb.value;
+    if (ra === rb) {
+      if (box) box.innerHTML = '<div class="fam-cmp-empty">角色 A 与角色 B 不能相同</div>';
+      return;
+    }
+    if (box) box.innerHTML = '<div class="fam-cmp-empty">对比中…</div>';
+    famApiGet('/api/family-volunteers/compare?userId=' + famUid() + '&role_a=' + encodeURIComponent(ra) + '&role_b=' + encodeURIComponent(rb))
+      .then(function(res){
+        var d = res && res.data;
+        if (d) famRenderCompare(d);
+      })
+      .catch(function(err){
+        if (famIsWaking(err)) {
+          famShowBanner(true);
+          famStartWake();
+          if (box) box.innerHTML = '<div class="fam-cmp-empty">服务唤醒中，稍后重试</div>';
+        } else if (box) {
+          box.innerHTML = '<div class="fam-cmp-empty">对比失败：' + famEsc(err && err.message ? err.message : '') + '</div>';
+        }
+      });
+  };
 }
 
 function famFind(id){
@@ -414,3 +460,52 @@ function famFind(id){
   }
   return null;
 }
+
+/* ---------- 对比视图渲染（EP-14 三桶 + 分歧高亮） ---------- */
+function famRole(code){ return FAM_ROLE_LABEL[code] || code; }
+
+function famCmpItem(it, kind){
+  var diff = (kind === 'both' && it.score_differs) ? ' fam-cmp-item--diff' : '';
+  var scoreLine;
+  if (kind === 'both') {
+    scoreLine = '<div class="fam-cmp-score">A ' + famNum(it.score_a) + ' · B ' + famNum(it.score_b) +
+      (it.score_differs ? ' <span class="fam-cmp-diff-flag">分数不一致</span>' : '') + '</div>';
+  } else {
+    scoreLine = '<div class="fam-cmp-score">' + famNum(it.score) + '</div>';
+  }
+  return '<div class="fam-cmp-item' + diff + '">' +
+      '<span class="fam-cmp-kind">' + famEsc(it.kind) + '</span>' +
+      '<span class="fam-cmp-name">' + famEsc(it.name) + '</span>' +
+      scoreLine +
+    '</div>';
+}
+
+function famCmpBucket(title, list, kind){
+  var h = '<div class="fam-cmp-bucket fam-cmp-bucket--' + kind + '">';
+  h += '<div class="fam-cmp-bucket-title">' + famEsc(title) + '（' + (list ? list.length : 0) + '）</div>';
+  if (!list || !list.length) {
+    h += '<div class="fam-cmp-empty">—</div>';
+  } else {
+    for (var i = 0; i < list.length; i++) h += famCmpItem(list[i], kind);
+  }
+  h += '</div>';
+  return h;
+}
+
+function famRenderCompare(data){
+  var box = document.getElementById('fam-cmp-result');
+  if (!box) return;
+  if (!data) { box.innerHTML = ''; return; }
+  var counts = data.counts || {};
+  var h = '<div class="fam-cmp-summary">';
+  h += '<span>未共识 · ' + famRole(data.role_a) + ' 独有 ' + famNum(counts.only_a) + '</span>';
+  h += '<span>共识 ' + famNum(counts.both) + '</span>';
+  h += '<span>未共识 · ' + famRole(data.role_b) + ' 独有 ' + famNum(counts.only_b) + '</span>';
+  h += '</div>';
+  h += famCmpBucket('未共识 · ' + famRole(data.role_a) + ' 独有', data.only_a, 'a');
+  h += famCmpBucket('共识（含分数差异提示，不计入列表分歧）', data.both, 'both');
+  h += famCmpBucket('未共识 · ' + famRole(data.role_b) + ' 独有', data.only_b, 'b');
+  box.innerHTML = h;
+}
+
+function famNum(n){ return (n == null ? 0 : n); }
