@@ -16,3 +16,8 @@ node_modules/
 online.html
 _seed_check/
 *.tmp
+
+# 环境变量（连接串含敏感凭据，严禁提交）
+.env
+.env.*
+!.env.example

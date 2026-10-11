@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "pg": "^8.13.1"
   },
   "engines": {
     "node": ">=22.5.0"

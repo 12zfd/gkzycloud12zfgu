@@ -34,6 +34,11 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY server.js  ./
 COPY index.html ./
 
+# D 域（家庭协同）新增目录 —— 只增式挂载，必须随镜像一起带进容器
+COPY routes-d/  ./routes-d/
+COPY services/  ./services/
+COPY repo/      ./repo/
+
 # 种子库：仓库里这份是「初始种子」，不是运行库。
 # 容器内仍落在 /app/gkzy.db（与 server.js 的 DB_FILE 一致），行为与从前完全相同；
 # 但仓库里不再出现一个看起来像「活库」的 gkzy.db。
