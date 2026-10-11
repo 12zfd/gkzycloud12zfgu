@@ -11,8 +11,12 @@
 FROM node:lts-alpine
 
 # ---- 运行环境：字符集与时区 ----
-# 不设这两个变量时：容器为 UTC，且 server.js 里的 toLocaleString('zh-CN')
-# 会落到无 locale 的兜底路径，/api/health 返回的时间会与本地差 8 小时。
+# ⚠️ Alpine 基础镜像**不含 tzdata**：缺它时 OS 层 localtime 会退回 UTC
+#    （影响 SQLite 的 datetime('now','localtime')），Node/ICU 也不会采纳 TZ。
+#    必须在 ENV TZ 之前装好。
+RUN apk add --no-cache tzdata
+
+# 不设这些变量时：容器为 UTC，server.js 里的本地时间会与北京时间差 8 小时。
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     TZ=Asia/Shanghai

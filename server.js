@@ -206,6 +206,26 @@ app.use((req, res, next) => {
  * 4. 公共工具
  * ========================================================================= */
 
+/**
+ * 北京时间字符串（yyyy/MM/dd HH:mm:ss）。
+ * 显式指定时区，**不依赖容器进程的默认时区** —— Alpine 基础镜像里
+ * `ENV TZ=Asia/Shanghai` 不会被 ICU 采纳（health 的 tz 字段自报 UTC）。
+ * ICU 若连 tz 数据都没有（RangeError），按 UTC+8 手算兜底。
+ */
+function cnNow() {
+  const d = new Date();
+  try {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).format(d);
+  } catch (e) {
+    return new Date(d.getTime() + 8 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  }
+}
+
 /** 统一返回信封 —— 与前端 API.unwrap 的契约一字不差：{ code, data:{ list,total,page,pageSize } } */
 function ok(res, list, total, page, pageSize) {
   res.json({ code: 200, data: { list, total, page, pageSize } });
@@ -405,8 +425,8 @@ app.get('/api/health', safe((req, res) => {
       commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local',
       branch: process.env.RENDER_GIT_BRANCH || 'local',
       /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演 */
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      time: new Date().toLocaleString('zh-CN')
+      tz:   Intl.DateTimeFormat().resolvedOptions().timeZone + ' | env TZ=' + (process.env.TZ || 'unset'),
+      time: cnNow()
     }
   });
 }));
