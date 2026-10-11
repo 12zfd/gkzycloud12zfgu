@@ -1,0 +1,121 @@
+/* ============================================================================
+ * domain-d/app.css —— D 域（家庭协同）样式源文件
+ * ---------------------------------------------------------------------------
+ * 仅承载家庭协同视图的样式；由 domain-d/inject.js 内联为独立 D 域样式块（块 id="d-domain"）。
+ * 复用主样式的设计变量（--brand / --ink-2 / --t-xs / --card / --brand-soft …），
+ * 全部以 fam- 前缀作用域，绝不污染 A/B/C/E 域。
+ * 约定：本文件只写样式，不含任何脚本、console、内联事件。
+ * ========================================================================== */
+
+/* —— 视图容器：复用 .view-section 的显隐机制（由 UI.switchView 切换 .active） —— */
+#view-family .page-body{ padding:0 var(--pad,16px) 96px; }
+
+/* —— 冷启动 / 降级 503 横幅 —— */
+.fam-banner{
+  display:flex; align-items:flex-start; gap:10px;
+  margin:14px 0; padding:12px 14px;
+  background:#FFF6E9; border:1px solid #F4D9A8; border-radius:12px;
+  color:#8A5B12; font-size:var(--t-sm,14px); line-height:1.5;
+}
+.fam-banner i{ font-size:16px; margin-top:1px; flex:0 0 auto; }
+.fam-banner .fam-banner-txt{ flex:1 1 auto; }
+.fam-banner .fam-banner-txt b{ color:#8A5B12; }
+.fam-banner .btn{ flex:0 0 auto; }
+
+/* —— 房间列表（EP-10） —— */
+.fam-rooms{
+  display:flex; gap:10px; overflow-x:auto; padding:14px 2px 4px;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+.fam-rooms::-webkit-scrollbar{ display:none; }
+.fam-room{
+  flex:0 0 auto; min-width:140px; max-width:200px;
+  padding:10px 12px; background:var(--card,#fff); border-radius:12px;
+  border:1px solid transparent; box-shadow:0 2px 8px rgba(31,34,69,.06);
+  cursor:pointer; text-align:left;
+}
+.fam-room.active{ border-color:var(--brand,#4F46E5); background:var(--brand-soft,#EEF0FE); }
+.fam-room .fam-room-name{ font-size:var(--t-sm,14px); font-weight:600; color:var(--ink,#222); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fam-room .fam-room-meta{ margin-top:4px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+
+/* —— 时间线（EP-02） —— */
+.fam-timeline{ display:flex; flex-direction:column; gap:12px; padding:8px 0 4px; }
+.fam-empty{ padding:40px 16px; text-align:center; color:var(--ink-2,#5A5C74); font-size:var(--t-sm,14px); }
+
+.fam-msg{
+  background:var(--card,#fff); border-radius:14px; padding:12px 14px;
+  box-shadow:0 2px 10px rgba(31,34,69,.06); border:1px solid #F1F2F7;
+}
+.fam-msg-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.fam-role{ font-size:var(--t-xs,11px); font-weight:600; padding:2px 8px; border-radius:999px; background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); }
+.fam-role--father{ background:#E7F8F1; color:#0E8A5F; }
+.fam-role--mother{ background:#FDEEF4; color:#C24B86; }
+.fam-role--teacher{ background:#FFF0EC; color:#D9542B; }
+.fam-dir{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-time{ margin-left:auto; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+
+.fam-translation{
+  font-size:var(--t-sm,14px); line-height:1.6; color:var(--ink,#222);
+  padding:10px 12px; background:#F7F8FC; border-radius:10px; margin-bottom:8px;
+}
+.fam-raw{
+  font-size:var(--t-sm,14px); line-height:1.6; color:var(--ink-2,#5A5C74);
+  padding:10px 12px; background:#FBFBFD; border:1px dashed #E3E5EE; border-radius:10px;
+  white-space:pre-wrap; word-break:break-word;
+}
+.fam-raw[hidden]{ display:none; }
+.fam-pending{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); padding:8px 12px; background:#F7F8FC; border-radius:10px; margin-bottom:8px; }
+.fam-state-note{ font-size:var(--t-xs,11px); line-height:1.5; padding:8px 12px; border-radius:10px; margin-bottom:8px; }
+.fam-state-note--stale{ background:#FFF6E9; color:#8A5B12; }
+.fam-state-note--failed{ background:#FDEEF0; color:#C0392B; }
+.fam-state-note--flagged{ background:#E7F8F1; color:#0E8A5F; }
+
+/* —— 职业信号标签（EP-08 / EP-11） —— */
+.fam-signals{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; }
+.fam-sig{ font-size:var(--t-xs,11px); padding:3px 8px; border-radius:999px; background:#EEF0FE; color:#4F46E5; border:1px solid #D9DCF7; }
+.fam-sig--stale{ background:#F1F2F7; color:#9A9CB0; border-color:#E3E5EE; text-decoration:line-through; }
+.fam-sig b{ font-weight:700; }
+.fam-sig .fam-sig-conf{ opacity:.7; margin-left:4px; }
+
+/* —— 消息操作条（EP-04 / EP-12 / EP-05 / EP-07 / EP-06） —— */
+.fam-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.fam-actions .btn{ padding:6px 12px; font-size:var(--t-xs,11px); }
+
+/* —— 编辑器（EP-04 内联编辑） —— */
+.fam-editor{ margin-top:8px; }
+.fam-editor textarea{
+  width:100%; box-sizing:border-box; min-height:72px; resize:vertical;
+  padding:10px 12px; font-size:var(--t-sm,14px); line-height:1.6;
+  border:1px solid #D9DCF7; border-radius:10px; background:#fff; color:var(--ink,#222);
+}
+.fam-editor .fam-actions{ margin-top:8px; }
+
+/* —— 发送区（EP-01） —— */
+.fam-composer{
+  position:fixed; left:0; right:0; bottom:var(--nav-h,58px);
+  background:var(--card,#fff); border-top:1px solid #ECECF3;
+  padding:10px var(--pad,16px) calc(10px + env(safe-area-inset-bottom,0px));
+  box-shadow:0 -4px 16px rgba(31,34,69,.06);
+}
+.fam-roles{ display:flex; gap:6px; margin-bottom:8px; }
+.fam-role-opt{
+  flex:1 1 0; padding:6px 4px; text-align:center; font-size:var(--t-xs,11px);
+  border:1px solid #E3E5EE; border-radius:999px; background:#fff; color:var(--ink-2,#5A5C74);
+  cursor:pointer;
+}
+.fam-role-opt.active{ border-color:var(--brand,#4F46E5); background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); font-weight:600; }
+.fam-composer-row{ display:flex; gap:8px; align-items:flex-end; }
+.fam-composer textarea{
+  flex:1 1 auto; box-sizing:border-box; min-height:42px; max-height:120px; resize:none;
+  padding:10px 12px; font-size:var(--t-sm,14px); line-height:1.5;
+  border:1px solid #D9DCF7; border-radius:12px; background:#fff; color:var(--ink,#222);
+}
+.fam-send-hint{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); margin-top:6px; }
+
+/* —— 通用小按钮（D 域内复用，避免引入外部样式依赖） —— */
+.fam-msg .btn, .fam-banner .btn{
+  border:none; border-radius:10px; cursor:pointer; font-weight:500;
+}
+.fam-msg .btn--ghost, .fam-banner .btn--ghost{ background:#F1F2F7; color:var(--ink-2,#5A5C74); }
+.fam-msg .btn--brand, .fam-banner .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
+.fam-msg .btn--danger{ background:#FDEEF0; color:#C0392B; }
