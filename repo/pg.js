@@ -19,7 +19,16 @@ let PoolCtor = null;
 
 if (ENV.DATABASE_URL) {
   try {
-    PoolCtor = require('pg').Pool;
+    const pgMod = require('pg');
+    PoolCtor = pgMod.Pool;
+    // 06/07 里 id / user_id / ref_id 等全是 bigint（int8）；
+    // node-postgres 默认把 int8 当字符串返回，会让 routes-d 的严格比较
+    // （row.user_id !== uid）恒为 true → 房主自己被判 403，且 JSON 里 id/user_id
+    // 也变字符串，前端 === 比较会翻车。D 域的 bigint 都是自增代理键/小整数，
+    // 远低于 2^53，这里统一回变成 number 最省心。
+    // 必须在拿到 require('pg') 同一引用后再设，且只在此块内（pg 未安装/未配 URL
+    // 时绝不 require），不破坏「无 DATABASE_URL 不许崩」的纪律。
+    pgMod.types.setTypeParser(20, (v) => (v === null ? null : Number(v)));
     pool = new PoolCtor({
       connectionString: ENV.DATABASE_URL,
       max: 4,

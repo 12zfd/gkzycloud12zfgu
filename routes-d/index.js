@@ -78,6 +78,9 @@ function deriveTranslationState(row) {
   if (st === 'flagged') return 'flagged';
   if (st === 'failed') return 'failed';
   if (st === 'done' && row.translation_version === row.raw_version) return 'ok';
+  // 从未翻译过（translation_version 为 NULL）的新消息 = pending，不是 stale
+  if (st === 'pending' && row.translation_version == null) return 'pending';
+  // 有过译文、但原话已改 → 旧译文失效（stale）
   if (row.translation_version !== row.raw_version) return 'stale';
   return 'pending';
 }
@@ -255,11 +258,15 @@ router.put('/family-messages/:id/raw', ah(async (req, res) => {
       RETURNING *`,
     [rawText, id, uid, row.raw_version]
   );
+  // 写接口返回的 state 必须与读接口（deriveTranslationState）完全一致：
+  // 此前从未翻译过（translation_version 为 NULL）→ 'pending'；有过译文但原话已改 → 'stale'
+  const savedState = deriveTranslationState(updated);
   const saved = {
     id: updated.id, raw_text: updated.raw_text, raw_version: updated.raw_version,
     raw_edited_at: updated.raw_edited_at, translation_status: updated.translation_status,
-    translation_version: updated.translation_version, translation_text: null,
-    translation_state: 'stale'
+    translation_version: updated.translation_version,
+    translation_text: publicTranslationText(updated, savedState),
+    translation_state: savedState
   };
   res.json({ code: 200, data: { saved, previous_translation_invalidated: true } });
 }));
