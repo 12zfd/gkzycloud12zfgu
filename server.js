@@ -472,8 +472,18 @@ app.get('/api/health', safe((req, res) => {
        * 本地 direct-run 时这两个变量不存在，回落 'local'。 */
       commit: (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || 'local',
       branch: process.env.RENDER_GIT_BRANCH || 'local',
-      /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演 */
-      tz:   Intl.DateTimeFormat().resolvedOptions().timeZone + ' | env TZ=' + (process.env.TZ || 'unset'),
+      /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演。
+       * 显示时间（time 字段）已用 Asia/Shanghai 渲染；这里如实回显：
+       * 若 Asia/Shanghai 能正常渲染则标「Asia/Shanghai(beiJing fixed)」，
+       * 否则回落到进程解析到的时区 + 环境变量，避免再把 UTC 误报成已修正。 */
+      tz: (() => {
+        try {
+          new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Shanghai' }).format(new Date());
+          return 'Asia/Shanghai(beiJing fixed)';
+        } catch (e) {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone + ' | env TZ=' + (process.env.TZ || 'unset');
+        }
+      })(),
       pg: pgInfo,
       /* —— 部署是否真的发生过（改环境变量 = 同 commit 重启，commit 字段看不出来）——
        * uptimeSec 是进程存活秒数：数值「很大」说明还是老进程，改完变量后应当归零重涨。

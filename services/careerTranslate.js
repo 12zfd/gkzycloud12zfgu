@@ -20,6 +20,7 @@
  * ========================================================================== */
 
 const pg = require('../repo/pg');
+const rules = require('./translatorRules');
 
 /* 域级错误：携带 HTTP 状态与业务码（[E_XXX] 前缀由路由拼接进 message） */
 class DomainError extends Error {
@@ -29,20 +30,6 @@ class DomainError extends Error {
     this.code = code;
   }
 }
-
-/* ---------------------------------------------------------------- *
- * MODEL_ADAPTER —— 占位实现（模型接入前只产出 failed / 无信号）
- * ---------------------------------------------------------------- */
-const MODEL_ADAPTER = {
-  /** 换位翻译占位：模型未接入 → 一律失败 */
-  async translate(/* rawText */) {
-    return { ok: false, reason: 'model_not_implemented' };
-  },
-  /** 职业信号抽取占位：模型未接入 → 无信号（骨架期由路由层负责枚举校验） */
-  async extractSignals(/* rawText */) {
-    return { ok: false, reason: 'model_not_implemented', signals: [] };
-  }
-};
 
 /* ---------------------------------------------------------------- *
  * 进程内只读维表缓存（4 张 dim_*，共 22 行；懒加载、只读）
@@ -87,10 +74,10 @@ async function getDimensions() {
 }
 
 /* ---------------------------------------------------------------- *
- * 红线前置门（占位：骨架期不触发，接入模型/规则后补）
+ * 红线前置门（确定性 6 条规则，命中返回红线条码 → 上层写 flagged）
  * ---------------------------------------------------------------- */
-function _redLineCheck(/* rawText */) {
-  return null; // 占位：返回非 null 即命中红线（sys:<code>）
+function _redLineCheck(rawText) {
+  return rules.redLineCheck(rawText); // 返回 null 或 code（sys:<code> 由调用方拼接）
 }
 
 /* ---------------------------------------------------------------- *
@@ -116,6 +103,7 @@ async function flagMessage(msgId, reason, by) {
  * ---------------------------------------------------------------- */
 async function translateMessage(msg) {
   const rawText = msg.raw_text;
+  const direction = msg.direction; // child_to_parent | parent_to_child（服务端防伪推导，见 routes-d）
 
   // 1) 红线前置门（命中 → 写 flagged，不产出译文）
   const redLine = _redLineCheck(rawText);
@@ -125,9 +113,11 @@ async function translateMessage(msg) {
     return { state: 'flagged', row };
   }
 
-  // 2) 只把 raw_text 当输入（绝不把译文当输入）
-  const res = await MODEL_ADAPTER.translate(rawText);
+  // 2) 只把 raw_text 当输入（绝不把译文当输入）；方向决定读者视角（双向对称）
+  const res = rules.translate(rawText, direction);
   if (res && res.ok) {
+    const dims = await loadDimCache();
+    const text = rules.renderFourPart(res.parsed, dims, direction);
     const row = await pg.queryOne(
       `UPDATE public.family_message
           SET translation_text      = $1,
@@ -137,12 +127,12 @@ async function translateMessage(msg) {
               translated_by         = $4
         WHERE id = $5
         RETURNING *`,
-      [res.text, msg.raw_version, res.engine || 'placeholder@0', 'auto', msg.id]
+      [text, msg.raw_version, res.engine || 'rules@1.0.0', 'auto', msg.id]
     );
     return { state: 'done', row };
   }
 
-  // 3) L2：模型不可用 → failed，translation_text 必须 NULL，绝不伪造译文
+  // 3) L2：未命中任何规则 → failed，translation_text 必须 NULL，绝不伪造译文（绝不原话直发）
   const row = await pg.queryOne(
     `UPDATE public.family_message
         SET translation_status = 'failed',
@@ -159,9 +149,10 @@ async function translateMessage(msg) {
  * ---------------------------------------------------------------- */
 async function extractCareerSignal(msg) {
   const rawText = msg.raw_text;
+  const direction = msg.direction; // child_to_parent | parent_to_child
   const cache = await loadDimCache();
 
-  const res = await MODEL_ADAPTER.extractSignals(rawText);
+  const res = rules.extractSignals(rawText, direction);
   const signals = (res && Array.isArray(res.signals)) ? res.signals : [];
 
   // 枚举封闭校验：非空槽位必须命中 dim_*（越界 → 422）

@@ -56,10 +56,27 @@ function notReady(res) {
   return true;
 }
 
+/* ---------- PG 连接类错误码（已配置但握手/连接失败 → 视为服务未就绪） ---------- */
+/* 含：node socket 类（ENOTFOUND/ECONNREFUSED/ETIMEDOUT/EHOSTUNREACH/ENETUNREACH）
+ *     + PG 协议类（28P01 鉴权失败窗口 / 28000 鉴权失败 / 53300 连接数爆 / XX000 内部）。
+ * 排除 42P01（undefined_table）等自身 SQL bug —— 必须炸成 500 暴露，绝不降级成 503。 */
+const PG_CONN_ERR_CODES = new Set([
+  'ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'EHOSTUNREACH', 'ENETUNREACH',
+  '28P01', '28000', '53300', 'XX000'
+]);
+function isPgConnectionError(code) {
+  return typeof code === 'string' && PG_CONN_ERR_CODES.has(code);
+}
+
 /* ---------- 异步 handler 包装（捕获 rejection，避免未处理 Promise） ---------- */
 function ah(handler) {
   return (req, res) => {
     Promise.resolve().then(() => handler(req, res)).catch(err => {
+      // PG 已配置但连接/握手失败 → 与「未配置」同语义的 L3 503，复用 notReady（不新增响应形状）。
+      if (err && err.code && isPgConnectionError(err.code)) {
+        notReady(res);
+        return;
+      }
       if (err && err.code && err.status) {
         fail(res, err.status, '[' + err.code + '] ' + (err.message || ''));
       } else {
@@ -162,8 +179,8 @@ router.post('/family-messages', ah(async (req, res) => {
   const total = (await pg.queryOne('SELECT count(*)::int n FROM public.family_message WHERE user_id = $1', [uid])).n;
 
   if (autoTranslate) {
-    // 同一事务外自动触发一次翻译（失败不阻断投递）
-    ct.translateMessage({ id: row.id, raw_text: rawText, raw_version: row.raw_version }).catch(() => {});
+    // 同一事务外自动触发一次翻译（失败不阻断投递）；传入 direction 供换位引擎定读者视角
+    ct.translateMessage({ id: row.id, raw_text: rawText, raw_version: row.raw_version, direction }).catch(() => {});
   }
   res.json({ code: 200, data: { saved: shaped, total } });
 }));
@@ -284,7 +301,7 @@ router.post('/family-messages/:id/translate', ah(async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return fail(res, 400, '[E_PARAM_INVALID] id 非法');
 
   const row = await getOwnedMessage(id, uid);
-  const result = await ct.translateMessage({ id: row.id, raw_text: row.raw_text, raw_version: row.raw_version });
+  const result = await ct.translateMessage({ id: row.id, raw_text: row.raw_text, raw_version: row.raw_version, direction: row.direction });
 
   if (result.state === 'flagged') {
     const shaped = shapeMessage(result.row);
@@ -325,7 +342,7 @@ router.post('/family-messages/:id/extract-signal', ah(async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return fail(res, 400, '[E_PARAM_INVALID] id 非法');
 
   const row = await getOwnedMessage(id, uid);
-  const result = await ct.extractCareerSignal({ id: row.id, raw_text: row.raw_text, raw_version: row.raw_version });
+  const result = await ct.extractCareerSignal({ id: row.id, raw_text: row.raw_text, raw_version: row.raw_version, direction: row.direction });
   res.json({ code: 200, data: { message_id: result.message_id, raw_version: result.raw_version, signals: result.signals } });
 }));
 
@@ -661,4 +678,8 @@ router.post('/family-volunteers', ah(async (req, res) => {
   res.json({ code: 200, data: { saved: shapeVolRow(saved, ownerRole), total, duplicated } });
 }));
 
+/* ---------- 导出（含测试用）：PG 连接错误判定 + 异步包装（加固自测用） ---------- */
 module.exports = router;
+module.exports.isPgConnectionError = isPgConnectionError;
+module.exports.ah = ah;
+module.exports.notReady = notReady;
