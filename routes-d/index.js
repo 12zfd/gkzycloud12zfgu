@@ -574,7 +574,7 @@ router.get('/family-volunteers/compare', ah(async (req, res) => {
         score_differs: scoreDiffers
       });
     } else {
-      onlyA.push(a);
+      onlyA.push(mapA.get(k));
     }
   });
   keysB.forEach(k => { if (!keysA.has(k)) onlyB.push(mapB.get(k)); });
