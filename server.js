@@ -475,6 +475,12 @@ app.get('/api/health', safe((req, res) => {
       /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演 */
       tz:   Intl.DateTimeFormat().resolvedOptions().timeZone + ' | env TZ=' + (process.env.TZ || 'unset'),
       pg: pgInfo,
+      /* —— 部署是否真的发生过（改环境变量 = 同 commit 重启，commit 字段看不出来）——
+       * uptimeSec 是进程存活秒数：数值「很大」说明还是老进程，改完变量后应当归零重涨。
+       * instance 取 Render 实例 id 的后 6 位做指纹（同一实例稳定、换实例就变），
+       * 不含任何凭据，可安全公网可见。 */
+      uptimeSec: Math.round(process.uptime()),
+      instance: (process.env.RENDER_INSTANCE_ID || 'local').slice(-6),
       time: cnNow()
     }
   });
