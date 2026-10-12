@@ -256,6 +256,44 @@ function safe(handler) {
   };
 }
 
+/**
+ * 把 Postgres 连接错误翻译成「人类可读的粗粒度原因」。
+ * ★ 只回白名单里的固定文案 —— 绝不拼接 e.message / 主机名 / 用户名，
+ *   否则会把 Supabase 项目 ref 或连接串片段泄到公网健康检查上。
+ *   认不出来的错误码只回码本身，不回正文。
+ */
+function classifyPgError(e) {
+  /* node-postgres 把连接期错误包在 AggregateError 里（可能还套 cause），
+   * 顶层往往没有 code —— 必须递归挖到第一个带 code 的叶子节点。 */
+  const pickCode = (err, depth) => {
+    if (!err || depth > 5) return '';
+    if (err.code) return String(err.code);
+    if (Array.isArray(err.errors) && err.errors.length) return pickCode(err.errors[0], depth + 1);
+    if (err.cause) return pickCode(err.cause, depth + 1);
+    return '';
+  };
+  const code = pickCode(e, 0);
+  const MAP = {
+    ENOTFOUND:      '主机名解析失败（DNS 找不到 Pooler/Direct 主机，检查连接串主机段）',
+    EAI_AGAIN:      '主机名解析暂时失败（DNS 抖动，稍后重试）',
+    ECONNREFUSED:   '连接被拒（主机或端口不对）',
+    ETIMEDOUT:      '连接超时（地址不可达；Direct 仅 IPv6，请改用 Pooler）',
+    EHOSTUNREACH:   '主机不可达（Direct 仅 IPv6，免费实例连不上，请改用 Pooler）',
+    ENETUNREACH:    '网络不可达（多因走了 IPv6 的 Direct 地址，请改用 Pooler）',
+    ECONNRESET:     '连接被重置（Pooler 主动断开，检查连接数上限）',
+    '28P01':        '密码认证失败（密码错，或含 @ # / : 等特殊字符未做 URL 编码）',
+    '28000':        '认证失败（用户名/角色不对，Pooler 用户名须是 postgres.<项目ref>）',
+    '3D000':        '目标数据库不存在（连接串末尾库名不对，通常应是 /postgres）',
+    '42P01':        '表不存在（迁移脚本 01→11 未在该库执行）',
+    '42501':        '权限不足（缺 GRANT，参考 05_权限自检.sql）',
+    '53300':        '连接数超限（Supabase 免费档连接池已满）'
+  };
+  return MAP[code] || (code
+    ? ('连接失败（PG 错误码 ' + code + '）')
+    : '连接失败且无错误码 —— 多为连接超时/被中间层切断（若用的是 Direct 的 IPv6 地址，改 Pooler）');
+}
+
+
 /* ===========================================================================
  * 5. 业务查询
  * ========================================================================= */
@@ -403,6 +441,16 @@ function shapeGroup(row) {
 
 /* 6.0 健康检查 —— 用来确认后端活着（云上排查第一步就打这个） */
 app.get('/api/health', safe((req, res) => {
+  /* D 域外部 Postgres（Supabase）配置可见性 —— 只回布尔值，绝不出连接串/主机/密码。
+   * 为什么加：DATABASE_URL 是否真的注入进进程，从外部无法观测，只能靠 D 域端点
+   * 503/200 反推，排查极慢。这两个布尔值把「变量没进来」与「变量在但连接失败」
+   * 两件事一刀切开。探测本身失败不影响健康检查。 */
+  let pgInfo = { configured: false, ready: false };
+  try {
+    const pg = require('./repo/pg');
+    pgInfo = { configured: !!process.env.DATABASE_URL, ready: pg.isReady() };
+  } catch (e) { /* 忽略：健康检查不因探测失败而降级 */ }
+
   res.json({
     code: 200,
     data: {
@@ -426,10 +474,39 @@ app.get('/api/health', safe((req, res) => {
       branch: process.env.RENDER_GIT_BRANCH || 'local',
       /* 容器时区：TZ 生效与否直接可读，修 TZ 类问题时不用再推演 */
       tz:   Intl.DateTimeFormat().resolvedOptions().timeZone + ' | env TZ=' + (process.env.TZ || 'unset'),
+      pg: pgInfo,
       time: cnNow()
     }
   });
 }));
+
+/* 6.0.1 GET /api/health/pg —— D 域外部 Postgres 连通性探测（真连一次，SELECT 1）
+ * 只回是否连通 + 粗粒度原因分类；**绝不回显连接串、主机名、用户名或原始报错正文**，
+ * 避免把凭据/项目 ref 泄到公网。排查顺序：configured → ready → connected。 */
+app.get('/api/health/pg', async (req, res, next) => {
+  try {
+    const configured = !!process.env.DATABASE_URL;
+    let pg;
+    try { pg = require('./repo/pg'); } catch (e) { pg = null; }
+    const ready = !!(pg && pg.isReady());
+
+    if (!configured) {
+      return res.json({ code: 200, data: { configured: false, ready: false, connected: false,
+        reason: 'DATABASE_URL 未配置（Render 环境变量没进到进程）' } });
+    }
+    if (!ready) {
+      return res.json({ code: 200, data: { configured: true, ready: false, connected: false,
+        reason: '连接池未建立（require("pg") 失败或抛错）' } });
+    }
+    try {
+      const rows = await pg.query('SELECT 1 AS ok');
+      return res.json({ code: 200, data: { configured: true, ready: true, connected: true, ok: rows[0].ok } });
+    } catch (e) {
+      return res.json({ code: 200, data: { configured: true, ready: true, connected: false,
+        reason: classifyPgError(e) } });
+    }
+  } catch (e) { next(e); }
+});
 
 /* 6.1 GET /api/colleges —— 查询院校（支持 keyword / region / level / sort / page / size） */
 app.get('/api/colleges', safe((req, res) => {
