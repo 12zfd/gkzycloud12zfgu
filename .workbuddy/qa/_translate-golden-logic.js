@@ -97,6 +97,48 @@ for (const raw of IRRELEVANT) {
   ok(R.translate(raw, 'child_to_parent').ok === false, `无关样例「${raw.slice(0,8)}」应 translate.ok=false`);
 }
 
+// 模板语病回归：S1 剥离类型名 + S2/S4 不再双代词/双副词撞车
+// 用真实 dim label 格式（07_career_signal.sql 种子）做 mock，验证渲染层剥离。
+const MOCK_DIMS = {
+  career_intent:  { rows: [{ intent_code: 'CI_RESOLUTE', label: '决绝型（要一个能长期做、不痛苦的方向）' },
+                           { intent_code: 'CI_ESCAPE',   label: '逃离型（拒绝的不是专业，是被支配）' }] },
+  parent_concern: { rows: [{ concern_code: 'PC_COMMAND',    label: '命令型（必须考公/学医，别的免谈）→ 怕你将来没有稳定生计' },
+                           { concern_code: 'PC_SACRIFICE',  label: '牺牲付出型（我们为你付出这么多）→ 怕付出没结果' }] }
+};
+
+// S1 孩子侧：类型名不得进译文，只留诉求短语
+{
+  const t = R.translate('学医我肯定读不下去，我宁愿学动画！', 'child_to_parent');
+  const text = R.renderFourPart(t.parsed, MOCK_DIMS, 'child_to_parent');
+  const s1 = text.split('\n').find(l => l.startsWith('S1 承接：'));
+  ok(!/决绝型/.test(s1) && !/型（/.test(s1) && !/→/.test(s1), 'S1 孩子侧不得暴露类型名（决绝型）');
+  ok(/要一个能长期做、不痛苦的方向/.test(s1), 'S1 孩子侧应保留诉求短语');
+}
+// S1 家长侧：`→` 后诉求短语入译文，类型名剔除
+{
+  const t = R.translate('必须学医，别的免谈！', 'parent_to_child');
+  const text = R.renderFourPart(t.parsed, MOCK_DIMS, 'parent_to_child');
+  const s1 = text.split('\n').find(l => l.startsWith('S1 承接：'));
+  ok(!/命令型/.test(s1) && !/→/.test(s1), 'S1 家长侧不得暴露类型名（命令型）/ 箭头');
+  ok(/怕你将来没有稳定生计/.test(s1), 'S1 家长侧应保留「→」后诉求短语');
+}
+// S4 代词开头动作：不得出现「我们不/我们要」双代词撞车
+{
+  const t = R.translate('学医我肯定读不下去，我宁愿学动画！', 'child_to_parent');
+  const text = R.renderFourPart(t.parsed, MOCK_DIMS, 'child_to_parent');
+  const s4 = text.split('\n').find(l => l.startsWith('S4 提议：'));
+  ok(/^S4 提议：要不你把它的真实出路讲给我听/.test(s4), 'S4 代词动作不得双代词撞车（要不你把…）');
+  ok(!/要不我们[你我]/.test(s4), 'S4 不得出现「我们不/我们要」');
+}
+// S2 情绪词：不得与「也有点」前缀撞出「也有点也急/也有点有点」
+{
+  const t = R.translate('必须学医，别的免谈！', 'parent_to_child');
+  const text = R.renderFourPart(t.parsed, MOCK_DIMS, 'parent_to_child');
+  const s2 = text.split('\n').find(l => l.startsWith('S2 感受：'));
+  ok(/^S2 感受：说实话，我这边也有点急——/.test(s2), 'S2 干净情绪词「急」（无也急撞车）');
+  ok(!/也有点也/.test(s2) && !/也有点有点/.test(s2), 'S2 不得出现「也有点也/也有点有点」撞车');
+}
+
 console.log(`\n=== 换位翻译规则引擎 golden（纯逻辑）===`);
 console.log(`PASS=${pass}  FAIL=${fail}`);
 if (fail) { console.log('失败项：'); fails.forEach(f => console.log('  - ' + f)); process.exit(1); }

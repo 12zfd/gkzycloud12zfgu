@@ -81,25 +81,25 @@ const CHILD_RULES = [
   { // G3c 安排的人生 / 被安排 → E 新信息vs经验路径
     axis: 'E', intent: 'CI_REBEL', anchor: 'AN_RELATION',
     m: /(安排的人生|不要你们|我不要你们|被安排|替你想|听你们的|你们安排|不要被安排)/,
-    parent: { emotion: '有点难受', feeling: '我一直在替你想、却像在逼你', need: '怕你一个人扛错决定',
+    parent: { emotion: '难受', feeling: '我一直在替你想、却像在逼你', need: '怕你一个人扛错决定',
               action: '你告诉我你最想要的哪一点，我先听着不动手', focus: '你的自主权与我们的担心' }
   },
   { // G2c 自媒体 / G6c 新方向 → D 新兴职业vs传统铁饭碗
     axis: 'D', intent: 'CI_INSIDER', anchor: 'AN_NO_WASTE',
     m: /(自媒体|新赛道|电竞|新行业|新职业|新方向|新媒体|直播|短视频|创业|动漫|设计|艺术|人工智能)/,
-    parent: { emotion: '也承认我不太懂这行', feeling: '怕它不稳定、怕你没有应对风险的后路',
+    parent: { emotion: '没底', feeling: '怕它不稳定、怕你没有应对风险的后路',
               need: '你有应对风险的后路', action: '你把收入来源和退路说清楚', focus: '这条路的真实风险与出路' }
   },
   { // G8c 查了几个月 / 你们那套早过时 → E 新信息（懂行型·信息侧）
     axis: 'E', intent: 'CI_INSIDER', anchor: 'AN_NO_WASTE',
     m: /(查了几个月|查了很久|做了功课|一手信息|你们那套|早过时|过时了|信息差|我们那会儿)/,
-    parent: { emotion: '也有点不服', feeling: '怕新旧信息都没看全', need: '你把查到的给我看、我把我知道的讲给你',
+    parent: { emotion: '不服', feeling: '怕新旧信息都没看全', need: '你把查到的给我看、我把我知道的讲给你',
               action: '我们把查到的和知道的摆一起比', focus: '新信息与传统经验' }
   },
   { // G7c 但你们得听我说完 / 让一步 → A 让步试探型
     axis: 'A', intent: 'CI_BARGAIN', anchor: 'AN_RELATION',
     m: /(那我|能不能|可以谈|谈条件|让一步|得听我说完|要不|让步|先听我说|各退一步|但你们得)/,
-    parent: { emotion: '有点意外也有点松动', feeling: '怕一让再让没了边界',
+    parent: { emotion: '意外又松动', feeling: '怕一让再让没了边界',
               need: '定个规矩把这事儿好好谈', action: '你说三条理由，我回应三条', focus: '我们能一起商量的空间' }
   }
 ];
@@ -121,7 +121,7 @@ const PARENT_RULES = [
   { // G1p 必须学医 / 免谈 → A 命令型
     axis: 'A', concern: 'PC_COMMAND', anchor: 'AN_NO_REGRET',
     m: /(必须|免谈|就得|只能|别的免谈|没得商量|不准|不许|别讨价还价)/,
-    child: { emotion: '也急', feeling: '怕选错专业读四年很痛苦', need: '这个方向我能不能做下去',
+    child: { emotion: '急', feeling: '怕选错专业读四年很痛苦', need: '这个方向我能不能做下去',
              action: '你把你担心的岗位讲出来，我也把我查到的讲出来', focus: '真实岗位的对比' }
   },
   { // G6p 没出息 / 丢人 / 说出去 → B 面子体面型
@@ -139,7 +139,7 @@ const PARENT_RULES = [
   { // G2p 谁要你 / 没出路 → A 风险预警型
     axis: 'A', concern: 'PC_RISK', anchor: 'AN_NO_UNEMPLOY',
     m: /(谁要你|找不到工作|毕业即失业|没出路|将来怎么办|以后靠什么)/,
-    child: { emotion: '也有点慌', feeling: '被这么问像在被直接否掉', need: '你听完再判断',
+    child: { emotion: '慌', feeling: '被这么问像在被直接否掉', need: '你听完再判断',
              action: '我们把就业数据摆出来一起看', focus: '真实的就业数据' }
   },
   { // G5p 离家近 / 跑那么远 → C 照顾婚恋焦虑（归牺牲付出型的关系侧）
@@ -173,6 +173,21 @@ function parse(rawText, direction) {
 }
 
 /* ---------------------------------------------------------------------------
+ * 诉求短语抽取：把 dim_* 的 label（含「类型名（关键词）→ 怕你…」内部包装）剥离，
+ * 只保留面向读者的核心诉求短语。枚举 code / 类型名绝不进译文（PRD §3.6.3 保真纪律）。
+ *   · 家长侧担忧 label 形如「命令型（…）→ 怕你将来没有稳定生计」→ 取「→」后；
+ *   · 孩子侧意图 label 形如「决绝型（要一个能长期做、不痛苦的方向）」→ 取括号内。
+ * ------------------------------------------------------------------------- */
+function appealPhrase(label) {
+  if (!label) return label;
+  const s = String(label).trim();
+  if (s.includes('→')) return s.split('→').pop().trim();
+  const m = s.match(/（([^（）]*)）/);
+  if (m) return m[1].trim();
+  return s;
+}
+
+/* ---------------------------------------------------------------------------
  * 四段式渲染（PRD §3.6.3）—— 填充 dim_* 维表标签；S1 引用原话片段保证保真。
  * ------------------------------------------------------------------------- */
 function renderFourPart(parsed, dims, direction) {
@@ -181,10 +196,10 @@ function renderFourPart(parsed, dims, direction) {
   if (dims) {
     if (isChild && parsed.intent) {
       const row = (dims.career_intent.rows || []).find(r => r.intent_code === parsed.intent);
-      if (row) slotLabel = row.label;
+      if (row) slotLabel = appealPhrase(row.label);
     } else if (!isChild && parsed.concern) {
       const row = (dims.parent_concern.rows || []).find(r => r.concern_code === parsed.concern);
-      if (row) slotLabel = row.label;
+      if (row) slotLabel = appealPhrase(row.label);
     }
   }
 
@@ -203,7 +218,10 @@ function renderFourPart(parsed, dims, direction) {
 
   const s2 = `说实话，我这边也有点${emotion}——${feeling}。`;
   const s3 = `对我来说，最重要的其实是${need}。`;
-  const s4 = `要不我们${action}，一起看看${focus}？`;
+  // S4：动作槽若以代词（你/我/咱）开头，模板不加「我们」避免双代词撞车
+  const s4 = /^[你我咱]/.test(action)
+    ? `要不${action}，一起看看${focus}？`
+    : `要不我们${action}，一起看看${focus}？`;
 
   return `S1 承接：${s1}\nS2 感受：${s2}\nS3 需要：${s3}\nS4 提议：${s4}`;
 }
