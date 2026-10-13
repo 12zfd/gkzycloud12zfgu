@@ -133,10 +133,20 @@ async function loadSignals(messageId, rawVersion, includeStale) {
 }
 function shapeSignal(sig, msgRawVersion, dims) {
   const stale = sig.raw_version !== msgRawVersion;
-  const ax = dims.conflict_axis.find(d => d.axis_code === sig.axis_code);
+  /* ★ 四个槽位都要把「枚举码」翻成「人话标签」再下发。
+   *   历史缺陷：只解析了 conflict_axis 的 label，intent/concern/anchor 直接把
+   *   CI_RESOLUTE / AN_NO_REGRET 这类内部码丢给前端渲染 —— 用户看到的是开发日志。
+   *   标签来自 dim_* 四张维表（已在 dims 缓存里），取不到就返回 null，
+   *   由前端整段省略（宁可少说，也不暴露内部码）。只增字段，不改既有键。 */
+  const ax = (dims.conflict_axis  || []).find(d => d.axis_code   === sig.axis_code);
+  const it = (dims.career_intent  || []).find(d => d.intent_code  === sig.intent_code);
+  const pc = (dims.parent_concern || []).find(d => d.concern_code === sig.concern_code);
+  const an = (dims.common_anchor  || []).find(d => d.anchor_code  === sig.anchor_code);
   return {
     id: sig.id, axis_code: sig.axis_code, axis_label: ax ? ax.label : null,
-    intent_code: sig.intent_code, concern_code: sig.concern_code, anchor_code: sig.anchor_code,
+    intent_code: sig.intent_code, intent_label: it ? it.label : null,
+    concern_code: sig.concern_code, concern_label: pc ? pc.label : null,
+    anchor_code: sig.anchor_code, anchor_label: an ? an.label : null,
     confidence: sig.confidence, signal_status: sig.signal_status,
     raw_version: sig.raw_version, source_message_id: sig.source_message_id, stale
   };

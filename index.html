@@ -6376,8 +6376,12 @@ function famRenderSignals(sigs){
     var s = sigs[i];
     var stale = s.stale ? ' fam-sig--stale' : '';
     var conf = (s.confidence != null) ? Math.round(Number(s.confidence) * 100) + '%' : '';
-    var label = s.axis_label || s.axis_code || '信号';
-    var detail = [s.intent_code, s.concern_code, s.anchor_code].filter(Boolean).join(' · ');
+    var label = s.axis_label || '职业分歧';
+    /* ★ 只显示人话标签，绝不显示枚举码。
+     *   历史缺陷：这里曾拼 intent_code / concern_code / anchor_code，
+     *   用户看到的是 CI_RESOLUTE · AN_NO_REGRET 这种内部码 —— 像开发日志。
+     *   标签由服务端 shapeSignal 从 dim_* 维表解析；缺哪个就省哪个（不用码兜底）。 */
+    var detail = [s.intent_label, s.concern_label, s.anchor_label].filter(Boolean).join(' · ');
     html += '<span class="fam-sig' + stale + '"><b>' + famEsc(label) + '</b>' +
             (detail ? ' ' + famEsc(detail) : '') +
             (conf ? '<span class="fam-sig-conf">' + conf + '</span>' : '') + '</span>';
