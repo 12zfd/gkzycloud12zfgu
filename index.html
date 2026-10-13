@@ -1572,13 +1572,14 @@ const Env = {
     '</div>';
   }
 };
-// 挂载到 UI 以便学院详情页调用
-UI.envBlockHTML = function(college){ return Env.blockHTML(college); };
-
-
- *   abbr   : 校徽占位字符（2 字）
- *   level  : 985 | 211 | 双一流 | 普通
- *   score  : 2025 年参考最低分（全国基准，实际录取线 = score + 省份 offset）
+/* 生活环境推导系统（确定性，无 Math.random）
+ * 字段说明：
+ *   name  : 院校全称（用于 guessType 推断）
+ *   city  : 所在城市（用于 geoTier 推断）
+ *   level : 985 | 211 | 双一流 | 普通
+ *   type  : 综合 | 理工 | 师范 | 医药 | 艺术 | 财经
+ *   abbr  : 校徽占位字符（2 字）
+ *   score : 2025 年参考最低分（全国基准，实际录取线 = score + 省份 offset）
  */
 const COLLEGES = [
   /* ---------- 985（35 所） ---------- */
