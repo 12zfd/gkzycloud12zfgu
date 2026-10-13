@@ -6127,6 +6127,7 @@ var FAM = {
   dims: null,
   isFetching: false,
   fetched: false,
+  fetchAt: 0,
   editId: null,
   wakeTimer: null,
   wakeOn: false
@@ -6334,14 +6335,44 @@ function famFmtTime(t){
 /* ---------- 网络层：复用既有 API.fetchJSON（相对路径 / 抛错收口） ---------- */
 function famUid(){ return (typeof State !== 'undefined' && State.currentUserId) ? State.currentUserId : 1; }
 
+/* ★ 网络超时护栏（修复「冷启动 Render 代理挂住 1-3 分钟 → isFetching 全程卡死」）。
+ *   用 AbortController 包一层并在 FAM_API_TIMEOUT 后 setTimeout(abort)；
+ *   同时 race 一个超时 reject（Error('HTTP 503 (timeout)')），保证即便底层 fetch
+ *   不支持 signal 也能在超时后走 waking 语义，而不是无限挂死。
+ *   超时值可用环境变量 FAM_API_TIMEOUT_MS 覆盖（仅供测试加速，生产默认 10000ms）。 */
+var FAM_API_TIMEOUT = (typeof process !== 'undefined' && process.env && process.env.FAM_API_TIMEOUT_MS)
+  ? parseInt(process.env.FAM_API_TIMEOUT_MS, 10) || 10000
+  : 10000;
+
+function famApiWithTimeout(run){
+  var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var timer = setTimeout(function(){
+    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+  }, FAM_API_TIMEOUT);
+  var req = run(ctrl ? ctrl.signal : null);
+  var guard = new Promise(function(_, rej){
+    setTimeout(function(){ rej(new Error('HTTP 503 (timeout)')); }, FAM_API_TIMEOUT);
+  });
+  return Promise.race([req, guard]).then(function(v){
+    clearTimeout(timer); return v;
+  }, function(e){
+    clearTimeout(timer); throw e;
+  });
+}
+
 function famApiGet(path){
-  return API.fetchJSON(path, { method: 'GET' });
+  return famApiWithTimeout(function(signal){
+    return API.fetchJSON(path, signal ? { method: 'GET', signal: signal } : { method: 'GET' });
+  });
 }
 function famApiSend(method, path, body){
-  return API.fetchJSON(path, {
-    method: method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {})
+  return famApiWithTimeout(function(signal){
+    return API.fetchJSON(path, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+      signal: signal || undefined
+    });
   });
 }
 
@@ -6378,8 +6409,10 @@ if (typeof document !== 'undefined' && document.addEventListener) {
 
 /* ---------- 主加载（EP-10 房间 + EP-02 时间线） ---------- */
 function famLoadFamily(silent){
-  if (FAM.isFetching) return Promise.resolve();
+  // ★ 看门狗：挂死超 15s 允许重入，避免唤醒轮询/重试空转死锁
+  if (FAM.isFetching && Date.now() - (FAM.fetchAt || 0) < 15000) return Promise.resolve();
   FAM.isFetching = true;
+  FAM.fetchAt = Date.now();
   return famApiGet('/api/family-rooms?userId=' + famUid() + '&page=1&size=50')
     .then(function(res){
       FAM.rooms = (res && res.data && res.data.list) ? res.data.list : [];
@@ -6398,7 +6431,8 @@ function famLoadFamily(silent){
     .catch(function(err){
       FAM.isFetching = false;
       var waking = famIsWaking(err);
-      if (waking) {
+      // ★ fetched 之后数据已加载，服务抖动不再顶回大横幅（行内文案已兜底）
+      if (waking && !FAM.fetched) {
         famShowBanner(true);
         if (!silent) famStartWake();
       }
@@ -6413,10 +6447,13 @@ function famLoadTimeline(){
     .then(function(res){
       FAM.messages = (res && res.data && res.data.list) ? res.data.list : [];
       famRenderTimeline();
+      // ★ 成功即收横幅（时间线数据已就绪，不必再等 famLoadFamily 完整链路）
+      famStopWake();
+      famShowBanner(false);
     })
     .catch(function(err){
       var waking = famIsWaking(err);
-      if (waking) { famShowBanner(true); famStartWake(); }
+      if (waking && !FAM.fetched) { famShowBanner(true); famStartWake(); }
       if (!FAM.messages.length) famRenderTimeline(waking ? 'waking' : 'offline');
     });
 }
@@ -6462,7 +6499,7 @@ if (typeof Controller !== 'undefined') {
       famLoadFamily(true).then(famLoadTimeline);
     }).catch(function(err){
       if (hint) hint.textContent = famIsWaking(err) ? '服务唤醒中，请稍后重试' : '发送失败，请重试';
-      if (famIsWaking(err)) { famShowBanner(true); famStartWake(); }
+      if (famIsWaking(err) && !FAM.fetched) { famShowBanner(true); famStartWake(); }
     });
   };
   Controller.famFold = function(id){
@@ -6510,22 +6547,27 @@ if (typeof Controller !== 'undefined') {
         }
       })
       .catch(function(err){
-        if (famIsWaking(err)) { famShowBanner(true); famStartWake(); }
+        if (famIsWaking(err) && !FAM.fetched) { famShowBanner(true); famStartWake(); }
       });
   };
   Controller.famExtract = function(id){
     famApiSend('POST', '/api/family-messages/' + id + '/extract-signal', { userId: famUid() })
       .then(function(){ return famLoadTimeline(); })
-      .catch(function(err){ if (famIsWaking(err)) { famShowBanner(true); famStartWake(); } });
+      .catch(function(err){ if (famIsWaking(err) && !FAM.fetched) { famShowBanner(true); famStartWake(); } });
   };
   Controller.famReport = function(id){
     famApiSend('POST', '/api/family-messages/' + id + '/report', { userId: famUid(), reason_code: 'red_line' })
       .then(function(){ var m = famFind(id); if (m) { m.is_flagged = true; m.translation_state = 'flagged'; famRenderTimeline(); } })
-      .catch(function(err){ if (famIsWaking(err)) { famShowBanner(true); famStartWake(); } });
+      .catch(function(err){ if (famIsWaking(err) && !FAM.fetched) { famShowBanner(true); famStartWake(); } });
   };
   Controller.famRetry = function(){
     famShowBanner(false);
-    famLoadFamily(false);
+    // ★ 3s 强制重入：挂死超过 3s 立即解锁，保证「立即重试」按钮永远有响应；
+    //   3s 内的新鲜在途请求不动（避免与即将成功的请求竞争）。
+    if (FAM.isFetching && Date.now() - (FAM.fetchAt || 0) >= 3000) {
+      FAM.isFetching = false;
+    }
+    return famLoadFamily(false);
   };
   Controller.famCmpRun = function(){
     var sa = document.getElementById('fam-cmp-a');
@@ -6542,9 +6584,12 @@ if (typeof Controller !== 'undefined') {
       .then(function(res){
         var d = res && res.data;
         if (d) famRenderCompare(d);
+        // ★ 对比成功即收横幅（数据已就绪）
+        famStopWake();
+        famShowBanner(false);
       })
       .catch(function(err){
-        if (famIsWaking(err)) {
+        if (famIsWaking(err) && !FAM.fetched) {
           famShowBanner(true);
           famStartWake();
           if (box) box.innerHTML = '<div class="fam-cmp-empty">服务唤醒中，稍后重试</div>';
