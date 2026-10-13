@@ -19,7 +19,10 @@
 
 /* ---------- D 域私有状态（挂在全局，但不改 State 对象字面量） ---------- */
 var FAM = {
-  roomId: (function(){ try { return window.localStorage.getItem('zy_family_room') || 'default'; } catch (e) { return 'default'; } })(),
+  /* ★ 初值留空：由 famLoadFamily 回落到 rooms[0]（服务端按 last_message_at 倒序，即最新房间）。
+   *   历史缺陷：初值写死 'default'，而 'default' 恰好在列表里 → 永远不回落，
+   *   用户首屏落地在 default 房间（内容为空/全红线），招牌「换位翻译」零展示。 */
+  roomId: (function(){ try { return window.localStorage.getItem('zy_family_room') || ''; } catch (e) { return ''; } })(),
   role: 'student',
   rooms: [],
   messages: [],
@@ -154,23 +157,26 @@ function famRenderMessage(m){
   var body = '';
   var folded = !!m.folded;
 
+  /* ★ 原话块统一带「原话」标签：译文与原文必须一眼可辨，否则用户把译文当原文读。 */
+  var rawBlock = '<div class="fam-raw"' + (folded ? ' hidden' : '') + '><b class="fam-tag fam-tag--raw">原话</b>' + famEsc(m.raw_text || '') + '</div>';
+
   if (state === 'ok') {
-    body += '<div class="fam-translation">' + famEsc(m.translation_text || '') + '</div>';
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += '<div class="fam-translation"><b class="fam-tag fam-tag--trans">换位译文</b>' + famEsc(m.translation_text || '') + '</div>';
+    body += rawBlock;
   } else if (state === 'pending') {
-    body += '<div class="fam-pending">翻译生成中…（原文已保存，不会丢失）</div>';
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += '<div class="fam-pending">换位译文生成中…（原话已保存，不会丢失）</div>';
+    body += rawBlock;
   } else if (state === 'stale') {
     body += '<div class="fam-state-note fam-state-note--stale">原话已更新，旧译文失效，可点「重译」生成新译文。</div>';
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += rawBlock;
   } else if (state === 'failed') {
-    body += '<div class="fam-state-note fam-state-note--failed">译文生成失败，原话已保留，可点「重试」。</div>';
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += '<div class="fam-state-note fam-state-note--failed">换位译文生成失败，原话已保留，可点「重译」重试。</div>';
+    body += rawBlock;
   } else if (state === 'flagged') {
-    body += '<div class="fam-state-note fam-state-note--flagged">已转介专业支持资源，请优先关注当事人安全。</div>';
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += '<div class="fam-state-note fam-state-note--flagged">该消息触发安全红线，未生成换位译文 —— 已转介专业支持资源，请优先关注当事人安全。</div>';
+    body += rawBlock;
   } else {
-    body += '<div class="fam-raw"' + (folded ? ' hidden' : '') + '>' + famEsc(m.raw_text || '') + '</div>';
+    body += rawBlock;
   }
 
   var signals = famRenderSignals(m.signals);
@@ -178,8 +184,13 @@ function famRenderMessage(m){
   var actions = '<div class="fam-actions">';
   actions += '<button class="btn btn--ghost" data-action="fam-fold" data-id="' + m.id + '">' + (folded ? '展开原话' : '收起原话') + '</button>';
   actions += '<button class="btn btn--ghost" data-action="fam-edit" data-id="' + m.id + '">编辑原话</button>';
-  if (state === 'stale' || state === 'failed' || state === 'pending') {
-    actions += '<button class="btn btn--brand" data-action="fam-translate" data-id="' + m.id + '">' + (state === 'pending' ? '生成译文' : '重译') + '</button>';
+  /* ★ 翻译入口常驻（flagged 除外：红线态按设计不产出译文，给按钮＝死操作）。
+   *   历史缺陷：按钮只在 stale/failed/pending 出现，ok 态没有任何入口 →
+   *   招牌功能「双向换位翻译」在界面上不可发现。后端 EP-05 无状态守卫，ok 态可安全重译。 */
+  if (state !== 'flagged') {
+    var tLabel = (state === 'ok') ? '重新翻译' : (state === 'pending' ? '生成译文' : '重译');
+    var tCls = (state === 'ok') ? 'btn--ghost' : 'btn--brand';
+    actions += '<button class="btn ' + tCls + '" data-action="fam-translate" data-id="' + m.id + '">' + tLabel + '</button>';
   }
   actions += '<button class="btn btn--ghost" data-action="fam-extract" data-id="' + m.id + '">抽取职业信号</button>';
   actions += '<button class="btn btn--danger" data-action="fam-report" data-id="' + m.id + '">举报</button>';

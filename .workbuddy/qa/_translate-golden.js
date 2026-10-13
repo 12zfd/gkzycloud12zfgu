@@ -84,7 +84,12 @@ function deriveDir(role) { return role === 'student' ? 'child_to_parent' : 'pare
       const row = await pool.query('SELECT * FROM public.family_message WHERE id=$1', [msg.id]);
       const r = row.rows[0];
       ok(r.translation_status === 'done', `${label} DB translation_status 应 done`);
-      ok(r.translation_text && r.translation_text.includes('S1 承接：') && r.translation_text.includes('S4 提议：'), `${label} DB 译文四段齐备`);
+      /* ★ 断言改为「四段齐备且无内部脚手架前缀」——旧断言写死 'S1 承接：'/'S4 提议：'，
+       *   而那两个前缀正是要删掉的脚手架，不改断言会让 golden 永远红。 */
+      const transTxt = String(r.translation_text || '');
+      const parts = transTxt.split('\n').filter(s => s.trim() !== '');
+      ok(parts.length === 4, `${label} DB 译文应为四段，实际 ${parts.length} 段`);
+      ok(!/S[1-4]\s*(承接|感受|需要|提议)[:：]/.test(transTxt), `${label} DB 译文不得含内部脚手架前缀`);
       ok(r.translation_text && r.translation_text.includes(kw), `${label} DB 译文应引用原话核心「${kw}」`);
       ok(r.translation_engine === 'rules@1.0.0', `${label} translation_engine 应 rules@1.0.0`);
       ok(Number(r.translation_version) === Number(r.raw_version), `${label} translation_version 应 === raw_version`);
