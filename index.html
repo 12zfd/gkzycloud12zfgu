@@ -33,6 +33,12 @@
   --steady:#4F46E5;
   --safe:#10B981;
 
+  /* 生活环境 ABCD 语义色 */
+  --env-a:#10B981;
+  --env-b:#3B82F6;
+  --env-c:#F59E0B;
+  --env-d:#FF6B4A;
+
   --t-xs:11px;
   --t-sm:13px;
   --t-md:15px;
@@ -867,7 +873,7 @@ html.no-fa .fa-regular::before{ content:"\25CF"; opacity:.35; }
         <span id="home-prov-name" data-page-node-id="BDCdzA8bhTo6iwdQrGtkZK">河南</span>
         <i class="fa-solid fa-chevron-down caret" data-page-node-id="LyG0xouUAkeNVzBCoYE79F"></i>
       </button>
-      <div class="hero-count" data-page-node-id="dkBks1BuZPTZZzC1Hy6kWe"><i class="fa-regular fa-clock" data-page-node-id="71c8V4GAiw5fi0U48yygAw"></i> 距高考 <b id="home-countdown" data-page-node-id="QqVNJh26iv3YoxtzaFzDOg">—</b> 天</div>
+      <div class="hero-count" data-page-node-id="dkBks1BuZPTZZzC1Hy6kWe" id="home-count"><i class="fa-regular fa-clock" data-page-node-id="71c8V4GAiw5fi0U48yygAw"></i> 距高考 <b id="home-countdown" data-page-node-id="QqVNJh26iv3YoxtzaFzDOg">—</b> 天</div>
     </div>
     <div class="hero-greet" id="home-greet" data-page-node-id="i0wGqyP5KpBGrweGB02cFr">你好，同学</div>
     <p class="hero-sub" data-page-node-id="WFrSLt8jzMX5McOknQtagZ">输入分数，一键生成冲稳保志愿方案</p>
@@ -1315,27 +1321,261 @@ const CONFIG = {
    ========================================================================= */
 
 /**
- * 省份配置
- *   line   : 该省本科批省控线（用于位次估算与线差展示）
- *   count  : 物理类/理科考生规模（用于位次估算）
- *   offset : 该省录取线相对全国基准分的偏移，正值代表竞争更激烈
+ * 省份配置（31 个高考录取省份，不含港澳台）
+ *   name       : 展示简称
+ *   fullName   : 全称
+ *   code       : GB/T 2260 行政区划代码
+ *   line       : 本科批省控线
+ *   count      : 考生规模
+ *   offset     : 相对全国基准分的偏移
+ *   seq        : 排序序号
+ *   mode       : 高考模式 (3+3 / 3+1+2)
+ *   region     : 地理大区
  */
 const PROVINCES = [
-  { name:'河南', line:512, count:700000, offset: 6 },
-  { name:'山东', line:444, count:420000, offset: 3 },
-  { name:'广东', line:442, count:400000, offset: 0 },
-  { name:'河北', line:448, count:300000, offset: 3 },
-  { name:'四川', line:459, count:280000, offset: 2 },
-  { name:'湖南', line:422, count:260000, offset: 0 },
-  { name:'湖北', line:437, count:250000, offset: 1 },
-  { name:'江苏', line:462, count:240000, offset: 3 },
-  { name:'浙江', line:492, count:200000, offset:-2 },
-  { name:'陕西', line:443, count:170000, offset:-3 },
-  { name:'北京', line:448, count: 45000, offset:-12 }
+  { name:'河南', fullName:'河南省', code:'410000', line:512, count:700000, offset: 6, seq:1, mode:'3+1+2', region:'华中' },
+  { name:'山东', fullName:'山东省', code:'370000', line:444, count:420000, offset: 3, seq:2, mode:'3+1+2', region:'华东' },
+  { name:'广东', fullName:'广东省', code:'440000', line:442, count:400000, offset: 0, seq:3, mode:'3+1+2', region:'华南' },
+  { name:'河北', fullName:'河北省', code:'130000', line:448, count:300000, offset: 3, seq:4, mode:'3+1+2', region:'华北' },
+  { name:'四川', fullName:'四川省', code:'510000', line:459, count:280000, offset: 2, seq:5, mode:'3+1+2', region:'西南' },
+  { name:'湖南', fullName:'湖南省', code:'430000', line:422, count:260000, offset: 0, seq:6, mode:'3+1+2', region:'华中' },
+  { name:'湖北', fullName:'湖北省', code:'420000', line:437, count:250000, offset: 1, seq:7, mode:'3+1+2', region:'华中' },
+  { name:'江苏', fullName:'江苏省', code:'320000', line:462, count:240000, offset: 3, seq:8, mode:'3+1+2', region:'华东' },
+  { name:'浙江', fullName:'浙江省', code:'330000', line:492, count:200000, offset:-2, seq:9, mode:'3+3', region:'华东' },
+  { name:'陕西', fullName:'陕西省', code:'610000', line:443, count:170000, offset:-3, seq:10, mode:'3+1+2', region:'西北' },
+  { name:'北京', fullName:'北京市', code:'110000', line:448, count: 45000, offset:-12, seq:11, mode:'3+3', region:'华北' },
+  { name:'上海', fullName:'上海市', code:'310000', line:405, count: 35000, offset:-15, seq:12, mode:'3+3', region:'华东' },
+  { name:'天津', fullName:'天津市', code:'120000', line:463, count: 40000, offset: -8, seq:13, mode:'3+1+2', region:'华北' },
+  { name:'重庆', fullName:'重庆市', code:'500000', line:446, count: 50000, offset: -5, seq:14, mode:'3+1+2', region:'西南' },
+  { name:'福建', fullName:'福建省', code:'350000', line:431, count: 30000, offset: -1, seq:15, mode:'3+1+2', region:'东南' },
+  { name:'安徽', fullName:'安徽省', code:'340000', line:430, count: 55000, offset:  0, seq:16, mode:'3+1+2', region:'华东' },
+  { name:'辽宁', fullName:'辽宁省', code:'210000', line:432, count: 35000, offset:  0, seq:17, mode:'3+1+2', region:'东北' },
+  { name:'吉林', fullName:'吉林省', code:'220000', line:411, count: 25000, offset: -5, seq:18, mode:'3+1+2', region:'东北' },
+  { name:'黑龙江', fullName:'黑龙江省', code:'230000', line:389, count: 20000, offset:-10, seq:19, mode:'3+1+2', region:'东北' },
+  { name:'山西', fullName:'山西省', code:'140000', line:418, count: 25000, offset: -3, seq:20, mode:'3+1+2', region:'华北' },
+  { name:'贵州', fullName:'贵州省', code:'520000', line:377, count: 20000, offset:-12, seq:21, mode:'3+1+2', region:'西南' },
+  { name:'云南', fullName:'云南省', code:'530000', line:360, count: 25000, offset:-18, seq:22, mode:'3+1+2', region:'西南' },
+  { name:'甘肃', fullName:'甘肃省', code:'620000', line:368, count: 15000, offset:-15, seq:23, mode:'3+1+2', region:'西北' },
+  { name:'海南', fullName:'海南省', code:'460000', line:483, count: 10000, offset:  5, seq:24, mode:'3+3', region:'华南' },
+  { name:'青海', fullName:'青海省', code:'630000', line:336, count:  6000, offset:-20, seq:25, mode:'3+1+2', region:'西北' },
+  { name:'宁夏', fullName:'宁夏回族自治区', code:'640000', line:386, count:  8000, offset:-12, seq:26, mode:'3+1+2', region:'西北' },
+  { name:'新疆', fullName:'新疆维吾尔自治区', code:'650000', line:354, count:  9000, offset:-18, seq:27, mode:'3+1+2', region:'西北' },
+  { name:'内蒙古', fullName:'内蒙古自治区', code:'150000', line:367, count: 12000, offset:-15, seq:28, mode:'3+1+2', region:'华北' },
+  { name:'广西', fullName:'广西壮族自治区', code:'450000', line:369, count: 15000, offset:-16, seq:29, mode:'3+1+2', region:'华南' },
+  { name:'西藏', fullName:'西藏自治区', code:'540000', line:305, count:  2000, offset:-30, seq:30, mode:'3+1+2', region:'西南' }
 ];
 
 /**
- * 院校库（76 所，覆盖 27 个省级行政区）
+ * 生活环境数据模块
+ * 8 个评分维度 + 男女比例信息项，ABCD 确定性评级。
+ * 所有分数为示例口径（非官方公布值），仅用于界面演示。
+ */
+const ENV_DIMS = ['dormHardware','canteen','transit','sports','dormLife','surroundings','campusAdmin','campusCommerce'];
+const ENV_DIM_LABELS = {
+  dormHardware:'宿舍硬件', canteen:'食堂餐饮', transit:'交通区位',
+  sports:'运动场地', dormLife:'宿舍生活', surroundings:'周边生态',
+  campusAdmin:'校园服务', campusCommerce:'校园商业'
+};
+const ENV_DIM_WEIGHTS = {
+  dormHardware:0.25, canteen:0.15, transit:0.15,
+  sports:0.10, dormLife:0.10, surroundings:0.10,
+  campusAdmin:0.08, campusCommerce:0.07
+};
+const ENV_GRADE_SCORES = { A:4, B:3, C:2, D:1 };
+const ENV_CHEAPEST = { A:'#10B981', B:'#3B82F6', C:'#F59E0B', D:'#FF6B4A' };
+
+// 类型× geoTier × level 基准分表（示例口径）
+const TYPE_BASE = {
+  '综合': { firstTier:3.8, provincial:3.4, city:3.0 },
+  '理工': { firstTier:3.6, provincial:3.2, city:2.8 },
+  '师范': { firstTier:3.5, provincial:3.1, city:2.7 },
+  '医药': { firstTier:3.4, provincial:3.0, city:2.6 },
+  '艺术': { firstTier:3.0, provincial:2.6, city:2.2 },
+  '财经': { firstTier:3.5, provincial:3.1, city:2.7 }
+};
+const GEO_BONUS = { '一线':0.2, '省会':0.0, '地级市':-0.2 };
+const LEVEL_BONUS = { '985':0.2, '211':0.15, '双一流':0.1, '普通':0 };
+const GEO_TIERS = {
+  '北京':'一线', '上海':'一线', '广州':'一线', '深圳':'一线',
+  '杭州':'省会', '南京':'省会', '武汉':'省会', '成都':'省会',
+  '西安':'省会', '长沙':'省会', '天津':'省会', '重庆':'省会',
+  '苏州':'地级市', '无锡':'地级市', '宁波':'地级市', '合肥':'省会',
+  '郑州':'省会', '济南':'省会', '福州':'省会', '南昌':'省会',
+  '昆明':'省会', '贵阳':'省会', '南宁':'省会', '海口':'地级市',
+  '太原':'省会', '石家庄':'省会', '呼和浩特':'省会', '兰州':'省会',
+  '乌鲁木齐':'地级市', '拉萨':'地级市', '银川':'省会'
+};
+const COLLEGE_TYPE_MAP = {
+  '综合大学':'综合', '理工大学':'理工', '师范大学':'师范',
+  '医科大学':'医药', '艺术学院':'艺术', '财经大学':'财经'
+};
+function guessType(name){
+  for (const [k,v] of Object.entries(COLLEGE_TYPE_MAP)) if (name.includes(k)) return v;
+  return '综合'; // 兜底
+}
+function geoTier(cityName){
+  return GEO_TIERS[cityName] || '省会';
+}
+function scoreDim(base, geo, level){
+  return Math.min(4, Math.max(1, base + (GEO_BONUS[geo]||0) + (LEVEL_BONUS[level]||0)));
+}
+function gradeOfScore(s){
+  if (s >= 3.5) return 'A';
+  if (s >= 2.75) return 'B';
+  if (s >= 2.0) return 'C';
+  return 'D';
+}
+const ENV_CONCLUSION_TEMPLATES = {
+  A: '大学生活舒适便利，各方面条件都属于第一梯队。',
+  B: '整体生活环境良好，能满足日常学习与生活需求。',
+  C: '基本生活条件合格，部分设施有待改善。',
+  D: '生活环境较为基础，建议入校后实地感受。'
+};
+const ENV_DIM_TEMPLATES = {
+  dormHardware: {
+    A:'宿舍配备独立卫浴与空调，每间4人，空间宽敞明亮。',
+    B:'宿舍有空调，6人间，基本生活设施齐全。',
+    C:'宿舍有基本床桌，8人间，卫浴需共用。',
+    D:'宿舍条件较简朴，设施陈旧，建议自备必需品。'
+  },
+  canteen: {
+    A:'多个食堂各具特色，菜系丰富，价格亲民，卫生评级优秀。',
+    B:'食堂种类较多，能满足日常需求，价格适中。',
+    C:'食堂选择有限，口味一般，高峰期需要排队。',
+    D:'食堂条件一般，建议选择校外就餐。'
+  },
+  transit: {
+    A:'地铁直达校园，公交线路密集，出行非常便利。',
+    B:'公交线路覆盖主要区域，地铁步行可达。',
+    C:'公交线路有限，出行需依赖校车或公交。',
+    D:'公共交通不便，建议自备自行车。'
+  },
+  sports: {
+    A:'标准400米跑道、室内体育馆、 swimming pool、网球场一应俱全。',
+    B:'有标准跑道和篮球场，设施较完善。',
+    C:'有基本运动场地，但种类有限。',
+    D:'运动场地较少，建议到校外锻炼。'
+  },
+  dormLife: {
+    A:'24小时热水，深夜不断电，管理人性化，宿舍氛围融洽。',
+    B:'作息管理规范，有宿管值班，环境整洁。',
+    C:'有基本的作息规定，偶尔查寝。',
+    D:'管理较严格，熄灯时间较早。'
+  },
+  surroundings: {
+    A:'周边商圈发达，餐饮娱乐丰富，生活便利度极高。',
+    B:'周边有超市和餐厅，生活基本需求可满足。',
+    C:'周边商业较少，需要乘车购物。',
+    D:'周边环境较偏，建议自备常用物品。'
+  },
+  campusAdmin: {
+    A:'图书馆开放时间充足，自习室充足，医疗服务完善。',
+    B:'基础服务完善，图书馆和医务室正常运行。',
+    C:'服务基本可用，但高峰时段资源紧张。',
+    D:'服务设施有限，建议提前规划。'
+  },
+  campusCommerce: {
+    A:'校内便利店、打印店、快递点齐全，生活极其便利。',
+    B:'有基本商业配套，能满足日常需求。',
+    C:'商业设施较少，需要到校外。',
+    D:'几乎没有商业配套，建议自备生活用品。'
+  }
+};
+const ENV_CHIPS = [
+  '绿树成荫', '空气清新', '安静宜居', '交通便利', '美食众多',
+  '夜跑友好', '自习空间足', '快递方便', '图书馆棒', '食堂好吃',
+  '宿舍独立卫浴', '空调全覆盖', '热水24h', '运动场地多', '周边繁华'
+];
+const GENDER_RATIO_BY_TYPE = {
+  '师范': {male:30, female:70},
+  '理工': {male:70, female:30},
+  '综合': {male:50, female:50},
+  '医药': {male:40, female:60},
+  '艺术': {male:35, female:65},
+  '财经': {male:45, female:55}
+};
+function genderBalance(ratio){
+  const max = Math.max(ratio.male, ratio.female);
+  if (max <= 60) return {grade:'均衡', label:'比例均衡'};
+  if (max <= 75) return {grade:'偏科', label: ratio.male > ratio.female ? '男生居多' : '女生居多'};
+  return {grade:'悬殊', label: ratio.male > ratio.female ? '男生占绝对多数' : '女生占绝对多数'};
+}
+const Env = {
+  of(college){
+    const c = college || {};
+    const type = guessType(c.name);
+    const geo = geoTier(c.city || '');
+    const level = c.level || '普通';
+    const base = (TYPE_BASE[type] || TYPE_BASE['综合'])[level === '985' ? 'firstTier' : level === '211' || level === '双一流' ? 'provincial' : 'city'];
+    const raw = {};
+    ENV_DIMS.forEach(d => { raw[d] = gradeOfScore(scoreDim(base, geo, level)); });
+    // 一致性惩罚
+    const dCount = ENV_DIMS.filter(d => raw[d] === 'D').length;
+    let totalGrade = gradeOfScore(ENV_DIMS.reduce((s,d) => s + ENV_GRADE_SCORES[raw[d]], 0) / ENV_DIMS.length);
+    if (dCount >= 2) totalGrade = Math.min(totalGrade, 'C');
+    if (dCount === 1) totalGrade = Math.min(totalGrade, 'B');
+    // 总评不变量：totalGrade==='A' ⇒ 无任何D
+    if (totalGrade === 'A' && dCount > 0) totalGrade = 'B';
+    const chips = ENV_CHIPS.filter(() => Math.random() < 0.4).slice(0, 6);
+    // 用位置哈希替代 Math.random 保证确定性
+    const hash = ((c.id || 0) * 2654435761) >>> 0;
+    const selectedChips = ENV_CHIPS.filter((_, i) => ((hash >> i) & 1) === 1).slice(0, 6);
+    const ratio = GENDER_RATIO_BY_TYPE[type] || GENDER_RATIO_BY_TYPE['综合'];
+    const balance = genderBalance(ratio);
+    const conclusion = ENV_CONCLUSION_TEMPLATES[totalGrade] || ENV_CONCLUSION_TEMPLATES['B'];
+    const dimTexts = {};
+    ENV_DIMS.forEach(d => {
+      const tpl = ENV_DIM_TEMPLATES[d] || ENV_DIM_TEMPLATES['dormHardware'];
+      dimTexts[d] = tpl[raw[d]] || tpl['B'];
+    });
+    return {
+      conclusion, totalGrade, dims: raw, chips: selectedChips,
+      genderRatio: ratio, genderBalance: balance,
+      disclaimer: '以上数据为示例口径，非官方公布值，仅供参考。'
+    };
+  },
+  blockHTML(college){
+    const e = this.of(college);
+    const gradeColor = ENV_CHEAPEST[e.totalGrade] || '#3B82F6';
+    const dimCards = ENV_DIMS.map(d => {
+      const g = e.dims[d];
+      const gc = ENV_CHEAPEST[g] || '#9A9CB2';
+      return '<div class="env-dim-card">' +
+        '<div class="env-dim-header">' +
+          '<span class="env-dim-label">' + ENV_DIM_LABELS[d] + '</span>' +
+          '<span class="env-dim-grade" data-state="' + g + '" style="color:' + gc + '">' + g + '级</span>' +
+        '</div>' +
+        '<p class="env-dim-text">' + e.dimTexts[d] + '</p>' +
+      '</div>';
+    }).join('');
+    const chipRow = e.chips.map(ch =>
+      '<span class="env-chip">' + ch + '</span>'
+    ).join('');
+    const ratioBar = `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <div style="flex:1;height:8px;border-radius:4px;background:linear-gradient(to right,#3B82F6 ${e.genderRatio.male}%,#F472B6 ${e.genderRatio.male}%)"></div>
+      <span style="font-size:var(--t-xs);color:var(--ink-3)">男${e.genderRatio.male}% / 女${e.genderRatio.female}%</span>
+    </div>`;
+    return '<div class="env-block" style="margin-top:20px">' +
+      '<div class="sec-head"><span class="sec-title">生活环境</span></div>' +
+      '<div style="display:flex;align-items:center;gap:12px;margin:12px 0 8px;flex-wrap:wrap">' +
+        '<span class="env-total-grade" style="font-size:28px;font-weight:700;color:' + gradeColor + '">' + e.totalGrade + '</span>' +
+        '<span style="font-size:var(--t-sm);color:var(--ink-2)">' + e.conclusion + '</span>' +
+      '</div>' +
+      '<div class="env-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">' + chipRow + '</div>' +
+      '<div class="env-dims-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">' + dimCards + '</div>' +
+      '<div class="env-gender-card" style="margin:12px 0;padding:12px;background:var(--bg);border-radius:var(--r-card)">' +
+        '<div style="font-size:var(--t-sm);font-weight:600;color:var(--ink);margin-bottom:6px">男女比例</div>' +
+        ratioBar +
+        '<div style="margin-top:6px"><span class="env-balance-badge" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:var(--t-xs);background:' + (e.genderBalance.grade==='均衡'?'var(--safe)':'var(--brand-3)') + ';color:#fff">' + e.genderBalance.label + '</span></div>' +
+      '</div>' +
+      '<p style="font-size:var(--t-xs);color:var(--ink-3);line-height:1.6">' + e.disclaimer + '</p>' +
+    '</div>';
+  }
+};
+// 挂载到 UI 以便学院详情页调用
+UI.envBlockHTML = function(college){ return Env.blockHTML(college); };
+
+
  *   abbr   : 校徽占位字符（2 字）
  *   level  : 985 | 211 | 双一流 | 普通
  *   score  : 2025 年参考最低分（全国基准，实际录取线 = score + 省份 offset）
@@ -2054,12 +2294,43 @@ const Utils = {
     return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   },
 
-  /** 距离下一次高考（每年 6 月 7 日）的天数 */
+  /**
+   * 北京时间（UTC+8）零点毫秒。用于所有时效性计算，保证跨时区设备行为一致。
+   * @param {number} [atMs] - 可选入参，缺省 Date.now()，供验收断言注入时间。
+   */
+  bjDateMs(atMs){
+    const t = atMs != null ? new Date(atMs) : new Date();
+    return Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) + 8 * 3600000;
+  },
+
+  /**
+   * 高考倒计时（北京时间日历日四态状态机）。
+   * @param {number} [atMs] - 可选入参，缺省 Date.now()。
+   * @returns {{state:'BEFORE'|'EXAM_TODAY'|'EXAM_ONGOING'|'AFTER', days:number, text:string}}
+   */
+  gaokaoCountdown(atMs){
+    const now = atMs != null ? atMs : Date.now();
+    const bj = this.bjDateMs(now);
+    const bjYear = new Date(bj).getUTCFullYear();
+    // 目标：当年 6/7 北京时间零点
+    let target = Date.UTC(bjYear, 5, 7) + 8 * 3600000;
+    if (bj >= target) target = Date.UTC(bjYear + 1, 5, 7) + 8 * 3600000;
+    const diffMs = target - bj;
+    const diffDays = Math.round(diffMs / 86400000);
+    // 高考当天（6/7）是 state=EXAM_TODAY，考中（6/8~6/9）是 EXAM_ONGOING，考后是 AFTER
+    const examBjStart = Date.UTC(bjYear, 5, 7) + 8 * 3600000;
+    const examBjEnd = Date.UTC(bjYear, 5, 9) + 8 * 3600000 + 24 * 3600000; // 6/10 零点
+    if (bj >= examBjStart && bj < examBjEnd) {
+      const dayIndex = Math.floor((bj - examBjStart) / 86400000);
+      return { state: dayIndex === 0 ? 'EXAM_TODAY' : 'EXAM_ONGOING', days: dayIndex + 1, text: dayIndex === 0 ? '今天高考' : '第 ' + (dayIndex + 1) + ' 天' };
+    }
+    if (bj < examBjStart) return { state: 'BEFORE', days: diffDays, text: '距高考 ' + diffDays + ' 天' };
+    return { state: 'AFTER', days: diffDays, text: '距明年高考 ' + diffDays + ' 天' };
+  },
+
+  /** 距离下一次高考（每年 6 月 7 日）的天数 —— 薄封装，委托 gaokaoCountdown */
   daysToGaokao(){
-    const now = new Date();
-    let target = new Date(now.getFullYear(), 5, 7);
-    if (target.getTime() < now.getTime()) target = new Date(now.getFullYear() + 1, 5, 7);
-    return Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 86400000));
+    return this.gaokaoCountdown().days;
   },
 
   /** 省份配置查询（永远返回一个对象，不会 undefined —— 后端省份表为空也不会打崩渲染） */
@@ -3908,6 +4179,7 @@ const UI = {
       '<div class="score-trend">' + years + '</div>' +
       groupBlock +
       majorScoreBlock +
+      UI.envBlockHTML(c) +
       '<div style="display:flex;gap:10px;margin-top:18px">' +
         '<button class="btn btn--outline" style="flex:1" data-action="toggle-fav" data-id="' + Utils.escapeHTML(c.id) + '">' +
           '<i class="' + (isFav ? 'fa-solid' : 'fa-regular') + ' fa-star"></i> ' + (isFav ? '已收藏' : '收藏') +
@@ -4839,6 +5111,7 @@ const Controller = {
     // 5) 首屏渲染
     UI.renderAll();
     UI.switchView('home');
+    UI.startCountdownTicker();
 
     // 6) 首屏数据（走统一分页引擎，默认只拉第 1 页 20 条）
     Controller.loadColleges();
@@ -4895,8 +5168,15 @@ const Controller = {
       if (prov.length) {
         PROVINCES.length = 0;
         prov.forEach(p => PROVINCES.push({
-          name: p.name, line: Utils.num(p.line, 0),
-          count: Utils.num(p.cnt, 0), offset: Utils.num(p.score_offset, 0)
+          name: p.name,
+          fullName: p.full_name || p.name,
+          line: Utils.num(p.line, 0),
+          count: Utils.num(p.cnt, 0),
+          offset: Utils.num(p.score_offset, 0),
+          code: p.code || '',
+          seq: Utils.num(p.seq, 0),
+          mode: p.mode || '3+1+2',
+          region: p.region || ''
         }));
         changed = true;
       }
