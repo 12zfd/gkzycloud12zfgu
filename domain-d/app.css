@@ -162,3 +162,103 @@
 .fam-compare .btn--ghost{ background:#F1F2F7; color:var(--ink-2,#5A5C74); }
 .fam-compare .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
 .fam-compare .btn--danger{ background:#FDEEF0; color:#C0392B; }
+
+/* ============================================================================
+ * 两端画面（本版核心：学生一个画面、家长一个画面）
+ * ========================================================================== */
+
+/* —— 身份门：没选身份之前，'唯一' 显示的一屏 —— */
+.fam-gate{ padding:26px 0 8px; }
+.fam-gate[hidden]{ display:none !important; }
+.fam-gate-card{
+  background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:16px;
+  padding:22px 18px 18px; box-shadow:0 6px 24px rgba(31,34,69,.07); text-align:center;
+}
+.fam-gate-icon{ font-size:30px; color:var(--brand,#4F46E5); margin-bottom:10px; }
+.fam-gate-title{ font-size:var(--t-md,16px); font-weight:700; color:var(--ink,#222); }
+.fam-gate-sub{ margin-top:8px; font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); text-align:left; }
+.fam-gate-note{ margin-top:14px; font-size:var(--t-xs,11px); color:#9A9CB0; }
+/* 身份门里的四个按钮排成 2×2，比横排一行四个更好点 */
+.fam-gate .fam-roles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 0; }
+
+/* —— 主区显隐 —— */
+.fam-main[hidden]{ display:none !important; }
+
+/* —— 顶部身份条 —— */
+.fam-idbar{ display:flex; align-items:center; gap:10px; padding:12px 0 2px; }
+.fam-idbar-chip{
+  font-size:var(--t-xs,11px); font-weight:600; padding:5px 12px; border-radius:999px;
+  background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5);
+}
+.fam-idbar-chip--parent{ background:#E7F8F1; color:#0E8A5F; }
+.fam-idbar .btn{ margin-left:auto; border:none; border-radius:10px; cursor:pointer; font-weight:500; padding:6px 12px; font-size:var(--t-xs,11px); background:#F1F2F7; color:var(--ink-2,#5A5C74); }
+
+/* —— 区块标题（两端文案不同） —— */
+.fam-sec-head{ padding:10px 0 0; display:flex; flex-direction:column; gap:4px; }
+.fam-sec-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-sec-sub{ font-size:var(--t-xs,11px); line-height:1.6; color:var(--ink-2,#5A5C74); }
+
+/* —— 单条消息的两端视角标签 + 我的/对方 左边框 —— */
+.fam-side-tag{ font-size:var(--t-xs,11px); font-weight:600; color:var(--ink-2,#5A5C74); margin-bottom:6px; }
+.fam-msg--other{ border-left:3px solid var(--brand,#4F46E5); }
+.fam-msg--mine{ border-left:3px solid #D9DCF7; }
+
+/* —— 我的志愿表 —— */
+.fam-mine{ margin:16px 0 8px; padding:14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-mine-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+.fam-mine-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-mine-sub{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-mine-empty{ font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); }
+.fam-mine-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.fam-mine-item{ font-size:var(--t-xs,11px); padding:4px 10px; border-radius:999px; background:#F7F8FC; color:var(--ink,#222); border:1px solid #EDEEF5; }
+.fam-mine-item i{ font-style:normal; color:var(--ink-2,#5A5C74); margin-right:4px; }
+.fam-mine-diff{ margin-top:10px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-mine-diff b{ color:var(--brand,#4F46E5); }
+
+/* —— 家长端：分歧项 + 三态表态 + 收敛进度 —— */
+.fam-stance{ margin:16px 0 8px; padding:14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-stance[hidden]{ display:none !important; }
+.fam-stance-head{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+.fam-stance-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-stance-sub{ font-size:var(--t-xs,11px); line-height:1.6; color:var(--ink-2,#5A5C74); }
+.fam-progress{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.fam-progress-chip{ font-size:var(--t-xs,11px); padding:4px 10px; border-radius:999px; background:#F7F8FC; color:var(--ink-2,#5A5C74); }
+.fam-progress-chip--settled{ background:#E7F8F1; color:#0E8A5F; }
+.fam-progress-chip--deferred{ background:#FFF6E9; color:#8A5B12; }
+.fam-progress-chip--pending{ background:#F1F2F7; color:#6B6E86; }
+.fam-stance-empty{ font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); }
+
+.fam-stance-item{ border-top:1px solid #F4F5F9; padding:12px 0; }
+.fam-stance-item:first-of-type{ border-top:none; padding-top:2px; }
+.fam-stance-item-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.fam-stance-kind{ flex:0 0 auto; font-size:var(--t-xs,11px); padding:2px 8px; border-radius:999px; background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); }
+.fam-stance-name{ flex:1 1 auto; font-size:var(--t-sm,14px); font-weight:600; color:var(--ink,#222); word-break:break-word; }
+.fam-stance-status{ flex:0 0 auto; font-size:var(--t-xs,11px); padding:2px 8px; border-radius:999px; background:#F1F2F7; color:#6B6E86; }
+.fam-stance-status--settled{ background:#E7F8F1; color:#0E8A5F; }
+.fam-stance-status--deferred{ background:#FFF6E9; color:#8A5B12; }
+
+.fam-stance-opts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.fam-stance-opt{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:9px 4px; border-radius:12px; cursor:pointer;
+  border:1px solid #E3E5EE; background:#fff; color:var(--ink-2,#5A5C74);
+}
+.fam-stance-opt b{ font-size:var(--t-xs,11px); font-weight:700; }
+.fam-stance-opt span{ font-size:10px; opacity:.75; }
+.fam-stance-opt--accept.active{ border-color:#0E8A5F; background:#E7F8F1; color:#0E8A5F; }
+.fam-stance-opt--negotiable.active{ border-color:#C08A2B; background:#FFF6E9; color:#8A5B12; }
+.fam-stance-opt--veto.active{ border-color:#C0392B; background:#FDEEF0; color:#C0392B; }
+
+.fam-veto-fields{ margin-top:10px; display:flex; flex-direction:column; gap:10px; }
+.fam-veto-label{ display:flex; flex-direction:column; gap:6px; font-size:var(--t-xs,11px); font-weight:600; color:var(--ink,#222); }
+.fam-veto-reason, .fam-veto-sub{
+  width:100%; box-sizing:border-box; min-height:64px; resize:vertical;
+  padding:10px 12px; font-size:var(--t-sm,14px); line-height:1.6; font-weight:400;
+  border:1px solid #D9DCF7; border-radius:10px; background:#fff; color:var(--ink,#222);
+}
+.fam-veto-nosub{ display:flex; align-items:center; gap:8px; font-size:var(--t-xs,11px); font-weight:400; color:var(--ink-2,#5A5C74); }
+.fam-stance-err{ margin-top:8px; font-size:var(--t-xs,11px); color:#C0392B; }
+.fam-stance-actions{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+.fam-stance-actions .btn{ border:none; border-radius:10px; cursor:pointer; font-weight:500; padding:8px 16px; font-size:var(--t-xs,11px); }
+.fam-stance-actions .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
+.fam-stance-mine{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }

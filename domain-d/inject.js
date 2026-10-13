@@ -110,9 +110,12 @@ const CASES_BLOCK =
   "      case 'fam-translate':     Controller.famTranslate(el.getAttribute('data-id')); break;\n" +
   "      case 'fam-extract':       Controller.famExtract(el.getAttribute('data-id')); break;\n" +
   "      case 'fam-report':        Controller.famReport(el.getAttribute('data-id')); break;\n" +
-  "      case 'fam-cmp-run':       Controller.famCmpRun(); break;\n" +
-  "      case 'fam-retry':         Controller.famRetry(); break;\n" +
-  '      /* D-DOMAIN-CASES-END */';
+      "      case 'fam-cmp-run':       Controller.famCmpRun(); break;\n" +
+      "      case 'fam-retry':         Controller.famRetry(); break;\n" +
+      "      case 'fam-switch-role':   Controller.famSwitchRole(); break;\n" +
+      "      case 'fam-stance-set':    Controller.famStanceSet(el.getAttribute('data-item'), el.getAttribute('data-stance')); break;\n" +
+      "      case 'fam-stance-submit': Controller.famStanceSubmit(el.getAttribute('data-item')); break;\n" +
+      '      /* D-DOMAIN-CASES-END */';
 
 html = html.replace('    switch (action) {', CASES_BLOCK);
 

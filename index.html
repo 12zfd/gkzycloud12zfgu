@@ -750,6 +750,106 @@ html.no-fa .fa-regular::before{ content:"\25CF"; opacity:.35; }
 .fam-compare .btn--ghost{ background:#F1F2F7; color:var(--ink-2,#5A5C74); }
 .fam-compare .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
 .fam-compare .btn--danger{ background:#FDEEF0; color:#C0392B; }
+
+/* ============================================================================
+ * 两端画面（本版核心：学生一个画面、家长一个画面）
+ * ========================================================================== */
+
+/* —— 身份门：没选身份之前，'唯一' 显示的一屏 —— */
+.fam-gate{ padding:26px 0 8px; }
+.fam-gate[hidden]{ display:none !important; }
+.fam-gate-card{
+  background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:16px;
+  padding:22px 18px 18px; box-shadow:0 6px 24px rgba(31,34,69,.07); text-align:center;
+}
+.fam-gate-icon{ font-size:30px; color:var(--brand,#4F46E5); margin-bottom:10px; }
+.fam-gate-title{ font-size:var(--t-md,16px); font-weight:700; color:var(--ink,#222); }
+.fam-gate-sub{ margin-top:8px; font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); text-align:left; }
+.fam-gate-note{ margin-top:14px; font-size:var(--t-xs,11px); color:#9A9CB0; }
+/* 身份门里的四个按钮排成 2×2，比横排一行四个更好点 */
+.fam-gate .fam-roles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0 0; }
+
+/* —— 主区显隐 —— */
+.fam-main[hidden]{ display:none !important; }
+
+/* —— 顶部身份条 —— */
+.fam-idbar{ display:flex; align-items:center; gap:10px; padding:12px 0 2px; }
+.fam-idbar-chip{
+  font-size:var(--t-xs,11px); font-weight:600; padding:5px 12px; border-radius:999px;
+  background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5);
+}
+.fam-idbar-chip--parent{ background:#E7F8F1; color:#0E8A5F; }
+.fam-idbar .btn{ margin-left:auto; border:none; border-radius:10px; cursor:pointer; font-weight:500; padding:6px 12px; font-size:var(--t-xs,11px); background:#F1F2F7; color:var(--ink-2,#5A5C74); }
+
+/* —— 区块标题（两端文案不同） —— */
+.fam-sec-head{ padding:10px 0 0; display:flex; flex-direction:column; gap:4px; }
+.fam-sec-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-sec-sub{ font-size:var(--t-xs,11px); line-height:1.6; color:var(--ink-2,#5A5C74); }
+
+/* —— 单条消息的两端视角标签 + 我的/对方 左边框 —— */
+.fam-side-tag{ font-size:var(--t-xs,11px); font-weight:600; color:var(--ink-2,#5A5C74); margin-bottom:6px; }
+.fam-msg--other{ border-left:3px solid var(--brand,#4F46E5); }
+.fam-msg--mine{ border-left:3px solid #D9DCF7; }
+
+/* —— 我的志愿表 —— */
+.fam-mine{ margin:16px 0 8px; padding:14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-mine-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+.fam-mine-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-mine-sub{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-mine-empty{ font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); }
+.fam-mine-list{ display:flex; flex-wrap:wrap; gap:6px; }
+.fam-mine-item{ font-size:var(--t-xs,11px); padding:4px 10px; border-radius:999px; background:#F7F8FC; color:var(--ink,#222); border:1px solid #EDEEF5; }
+.fam-mine-item i{ font-style:normal; color:var(--ink-2,#5A5C74); margin-right:4px; }
+.fam-mine-diff{ margin-top:10px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-mine-diff b{ color:var(--brand,#4F46E5); }
+
+/* —— 家长端：分歧项 + 三态表态 + 收敛进度 —— */
+.fam-stance{ margin:16px 0 8px; padding:14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-stance[hidden]{ display:none !important; }
+.fam-stance-head{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+.fam-stance-head b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+.fam-stance-sub{ font-size:var(--t-xs,11px); line-height:1.6; color:var(--ink-2,#5A5C74); }
+.fam-progress{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.fam-progress-chip{ font-size:var(--t-xs,11px); padding:4px 10px; border-radius:999px; background:#F7F8FC; color:var(--ink-2,#5A5C74); }
+.fam-progress-chip--settled{ background:#E7F8F1; color:#0E8A5F; }
+.fam-progress-chip--deferred{ background:#FFF6E9; color:#8A5B12; }
+.fam-progress-chip--pending{ background:#F1F2F7; color:#6B6E86; }
+.fam-stance-empty{ font-size:var(--t-xs,11px); line-height:1.7; color:var(--ink-2,#5A5C74); }
+
+.fam-stance-item{ border-top:1px solid #F4F5F9; padding:12px 0; }
+.fam-stance-item:first-of-type{ border-top:none; padding-top:2px; }
+.fam-stance-item-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.fam-stance-kind{ flex:0 0 auto; font-size:var(--t-xs,11px); padding:2px 8px; border-radius:999px; background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); }
+.fam-stance-name{ flex:1 1 auto; font-size:var(--t-sm,14px); font-weight:600; color:var(--ink,#222); word-break:break-word; }
+.fam-stance-status{ flex:0 0 auto; font-size:var(--t-xs,11px); padding:2px 8px; border-radius:999px; background:#F1F2F7; color:#6B6E86; }
+.fam-stance-status--settled{ background:#E7F8F1; color:#0E8A5F; }
+.fam-stance-status--deferred{ background:#FFF6E9; color:#8A5B12; }
+
+.fam-stance-opts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.fam-stance-opt{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:9px 4px; border-radius:12px; cursor:pointer;
+  border:1px solid #E3E5EE; background:#fff; color:var(--ink-2,#5A5C74);
+}
+.fam-stance-opt b{ font-size:var(--t-xs,11px); font-weight:700; }
+.fam-stance-opt span{ font-size:10px; opacity:.75; }
+.fam-stance-opt--accept.active{ border-color:#0E8A5F; background:#E7F8F1; color:#0E8A5F; }
+.fam-stance-opt--negotiable.active{ border-color:#C08A2B; background:#FFF6E9; color:#8A5B12; }
+.fam-stance-opt--veto.active{ border-color:#C0392B; background:#FDEEF0; color:#C0392B; }
+
+.fam-veto-fields{ margin-top:10px; display:flex; flex-direction:column; gap:10px; }
+.fam-veto-label{ display:flex; flex-direction:column; gap:6px; font-size:var(--t-xs,11px); font-weight:600; color:var(--ink,#222); }
+.fam-veto-reason, .fam-veto-sub{
+  width:100%; box-sizing:border-box; min-height:64px; resize:vertical;
+  padding:10px 12px; font-size:var(--t-sm,14px); line-height:1.6; font-weight:400;
+  border:1px solid #D9DCF7; border-radius:10px; background:#fff; color:var(--ink,#222);
+}
+.fam-veto-nosub{ display:flex; align-items:center; gap:8px; font-size:var(--t-xs,11px); font-weight:400; color:var(--ink-2,#5A5C74); }
+.fam-stance-err{ margin-top:8px; font-size:var(--t-xs,11px); color:#C0392B; }
+.fam-stance-actions{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+.fam-stance-actions .btn{ border:none; border-radius:10px; cursor:pointer; font-weight:500; padding:8px 16px; font-size:var(--t-xs,11px); }
+.fam-stance-actions .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
+.fam-stance-mine{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
 </style>
 </head>
 <body data-page-node-id="iwu0S2PEfMFdu0F4ge00o1">
@@ -4990,6 +5090,9 @@ const Controller = {
       case 'fam-report':        Controller.famReport(el.getAttribute('data-id')); break;
       case 'fam-cmp-run':       Controller.famCmpRun(); break;
       case 'fam-retry':         Controller.famRetry(); break;
+      case 'fam-switch-role':   Controller.famSwitchRole(); break;
+      case 'fam-stance-set':    Controller.famStanceSet(el.getAttribute('data-item'), el.getAttribute('data-stance')); break;
+      case 'fam-stance-submit': Controller.famStanceSubmit(el.getAttribute('data-item')); break;
       /* D-DOMAIN-CASES-END */
       case 'nav-to':           Controller.goNav(el.getAttribute('data-target')); break;
       case 'goto-college':     Controller.goNav('college'); break;
@@ -6174,6 +6277,17 @@ if (document.readyState === 'loading') {
  *
  * 身份：复用既有前端用户选择 State.currentUserId（容器 SQLite /api/users，id 1/2），
  *       不再假设 PG 里存在 users 行，也不向其塞种子。
+ *
+ * ★ 两端画面（本版核心，用户原话「学生看到了是一个画面，家长看的又是一个页面」）：
+ *   1) 进「家庭」先过**身份门**（学生 / 父亲 / 母亲 / 老师），选一次写入独立 localStorage 键
+ *      zy_family_role，刷新仍在；随时可「切换身份」回去重选（数据不删）。
+ *   2) 未选身份时**只渲染身份门**，且**不发任何 /api/family-* 请求**（见 Controller.famOpen）。
+ *   3) 两端不是两套内容，是**同一段对话的两个视角**：学生端看到「爸妈的话 · 换位给我听」，
+ *      家长端看到「孩子的话 · 换位给我听」；同一条消息在两端的视角标签不同。
+ *   4) 家长端多出「分歧项 · 三态表态」区（可接受 / 可协商 / 不可妥协），
+ *      选「不可妥协」必须写理由（≥8 字）+ 替代方案（或勾选"没有替代方案"）——禁止裸否决；
+ *      学生端**整段不出现**该区块。
+ *   5) 服务端共识能力不可用（表未建 / PG 未就绪）时，表态区**整段隐藏**，不白屏、不编造。
  * ========================================================================== */
 
 /* ---------- D 域私有状态（挂在全局，但不改 State 对象字面量） ---------- */
@@ -6182,7 +6296,11 @@ var FAM = {
    *   历史缺陷：初值写死 'default'，而 'default' 恰好在列表里 → 永远不回落，
    *   用户首屏落地在 default 房间（内容为空/全红线），招牌「换位翻译」零展示。 */
   roomId: (function(){ try { return window.localStorage.getItem('zy_family_room') || ''; } catch (e) { return ''; } })(),
-  role: 'student',
+  /* ★ 身份门（本版核心）：role 为空 = 还没选过身份 → 只渲染身份选择屏，不发任何 D 域请求。
+   *   历史缺陷：role 初值写死 'student'，进来就默认「你是学生」——
+   *   家长打开看到的是学生画面，学生打开看到的是家长画面，两端根本无法区分。
+   *   现在改成持久读取 zy_family_role（独立 localStorage 键，不碰 STORE_KEY 对象）。 */
+  role: (function(){ try { return String(window.localStorage.getItem('zy_family_role') || ''); } catch (e) { return ''; } })(),
   rooms: [],
   messages: [],
   dims: null,
@@ -6191,7 +6309,15 @@ var FAM = {
   fetchAt: 0,
   editId: null,
   wakeTimer: null,
-  wakeOn: false
+  wakeOn: false,
+  /* —— 分歧项 / 三态表态（家长端） —— */
+  items: [],
+  progress: null,
+  stancePick: {},      /* item_id -> 暂选的 stance（未提交） */
+  stanceError: {},     /* item_id -> 校验错误文案 */
+  stanceDraft: {},     /* item_id -> 已输入但未提交的字段（重渲染时不擦掉用户打的字） */
+  consensusReady: false, /* 服务端共识能力是否可用（不可用则整段不出现） */
+  volunteers: []       /* 我的志愿表 */
 };
 
 var FAM_ROLES = [
@@ -6201,6 +6327,13 @@ var FAM_ROLES = [
   { code: 'teacher', label: '老师' }
 ];
 var FAM_ROLE_LABEL = { student: '学生', father: '父亲', mother: '母亲', teacher: '老师' };
+
+/* 学生端 / 家长端判定：唯一落点（两端画面靠它分支，别在各处重复判断） */
+function famIsStudent(){ return FAM.role === 'student'; }
+function famIsParent(){ return FAM.role === 'father' || FAM.role === 'mother' || FAM.role === 'teacher'; }
+/* 对方消息的视角文案：学生看家长 =「爸妈的话」，家长看学生 =「孩子的话」 */
+function famOtherLabel(){ return famIsStudent() ? '爸妈的话' : '孩子的话'; }
+function famSelfMsgLabel(){ return famIsStudent() ? '我说的话' : '我说的话'; }
 
 /* ---------- 视图容器：运行时动态创建，不改动任何既有 view 节点 ---------- */
 function famEnsureView(){
@@ -6215,32 +6348,105 @@ function famEnsureView(){
         '<div class="fam-banner-txt"><b>服务唤醒中</b>：家庭协同模块正在启动，约需 30 秒，稍后自动重试。</div>' +
         '<button class="btn btn--brand" data-action="fam-retry">立即重试</button>' +
       '</div>' +
-      '<div class="fam-rooms" id="fam-rooms"></div>' +
-      '<div class="fam-timeline" id="fam-timeline"></div>' +
-      '<div class="fam-composer">' +
-        '<div class="fam-roles" id="fam-roles"></div>' +
-        '<div class="fam-composer-row">' +
-          '<textarea id="fam-input" placeholder="把想对家人说的话原样写下来（双向换位翻译只转译，不改写你的原话）"></textarea>' +
-          '<button class="btn btn--brand" data-action="fam-send">发送</button>' +
+
+      /* ============ 身份门：没选身份之前，这一屏是「唯一」内容，不发任何请求 ============ */
+      '<div class="fam-gate" id="fam-gate">' +
+        '<div class="fam-gate-card">' +
+          '<div class="fam-gate-icon"><i class="fa-solid fa-people-roof"></i></div>' +
+          '<div class="fam-gate-title">这个家里，你是哪位？</div>' +
+          '<div class="fam-gate-sub">选一次就记住。学生看到的画面是「爸妈的话换位给我听」，家长看到的是「孩子的话换位给我听」——两边不是同一个页面。</div>' +
+          '<div class="fam-roles" id="fam-roles"></div>' +
+          '<div class="fam-gate-note">不用注册、不用邀请码；选错了随时能换，对话内容不会丢。</div>' +
         '</div>' +
-        '<div class="fam-send-hint" id="fam-send-hint"></div>' +
       '</div>' +
-      '<div class="fam-compare" id="fam-compare">' +
-        '<div class="fam-compare-head"><b>双志愿表对比</b><span class="fam-compare-sub">只展示，不写入共识</span></div>' +
-        '<div class="fam-compare-controls">' +
-          '<label class="fam-cmp-label">角色 A<select id="fam-cmp-a" class="fam-cmp-select">' + famCmpOptions('student') + '</select></label>' +
-          '<label class="fam-cmp-label">角色 B<select id="fam-cmp-b" class="fam-cmp-select">' + famCmpOptions('father') + '</select></label>' +
-          '<button class="btn btn--brand" data-action="fam-cmp-run">对比</button>' +
+
+      /* ============ 主区：选定身份后才出现 ============ */
+      '<div class="fam-main" id="fam-main" hidden>' +
+        '<div class="fam-idbar">' +
+          '<span class="fam-idbar-chip" id="fam-idbar-chip"></span>' +
+          '<button class="btn btn--ghost" data-action="fam-switch-role">切换身份</button>' +
         '</div>' +
-        '<div class="fam-compare-result" id="fam-cmp-result"></div>' +
+
+        '<div class="fam-sec-head" id="fam-sec-head"></div>' +
+        '<div class="fam-rooms" id="fam-rooms"></div>' +
+        '<div class="fam-timeline" id="fam-timeline"></div>' +
+
+        '<div class="fam-mine" id="fam-mine"></div>' +
+
+        /* —— 家长端专属：分歧项三态表态 + 收敛进度（学生端整段不出现） —— */
+        '<div class="fam-stance" id="fam-stance" hidden></div>' +
+
+        '<div class="fam-composer" id="fam-composer">' +
+          '<div class="fam-composer-row">' +
+            '<textarea id="fam-input" placeholder="把想对家人说的话原样写下来（双向换位翻译只转译，不改写你的原话）"></textarea>' +
+            '<button class="btn btn--brand" data-action="fam-send">发送</button>' +
+          '</div>' +
+          '<div class="fam-send-hint" id="fam-send-hint"></div>' +
+        '</div>' +
+
+        '<div class="fam-compare" id="fam-compare">' +
+          '<div class="fam-compare-head"><b>双志愿表对比</b><span class="fam-compare-sub">只展示，不写入共识</span></div>' +
+          '<div class="fam-compare-controls">' +
+            '<label class="fam-cmp-label">角色 A<select id="fam-cmp-a" class="fam-cmp-select">' + famCmpOptions('student') + '</select></label>' +
+            '<label class="fam-cmp-label">角色 B<select id="fam-cmp-b" class="fam-cmp-select">' + famCmpOptions('father') + '</select></label>' +
+            '<button class="btn btn--brand" data-action="fam-cmp-run">对比</button>' +
+          '</div>' +
+          '<div class="fam-compare-result" id="fam-cmp-result"></div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   var app = document.getElementById('app');
   if (app) app.appendChild(sec);
   famRenderRoles();
+  famApplyRole();
 }
 
-/* ---------- 发送者身份段控件（EP-01 的 sender_role 选择） ---------- */
+/* ---------- 身份应用：门 / 主区 / 各端文案 一次收口（唯一开关） ---------- */
+function famApplyRole(){
+  var gate = document.getElementById('fam-gate');
+  var main = document.getElementById('fam-main');
+  var on = (FAM.role === 'student' || FAM.role === 'father' || FAM.role === 'mother' || FAM.role === 'teacher');
+  if (gate) gate.hidden = on;
+  if (main) main.hidden = !on;
+  if (!on) return;
+  famRenderIdbar();
+  famRenderSecHead();
+  famRenderMine();
+  /* 学生端：表态区整段不出现（连同节点一起藏，不留空壳） */
+  if (!famIsParent()) {
+    var st = document.getElementById('fam-stance');
+    if (st) { st.hidden = true; st.innerHTML = ''; }
+  }
+}
+
+/* ---------- 顶栏：当前身份 + 切换入口 ---------- */
+function famRenderIdbar(){
+  var box = document.getElementById('fam-idbar-chip');
+  if (!box) return;
+  var tone = famIsStudent() ? 'fam-idbar-chip--student' : 'fam-idbar-chip--parent';
+  box.className = 'fam-idbar-chip ' + tone;
+  box.textContent = (famIsStudent() ? '学生视角' : '家长视角') + ' · ' + famRole(FAM.role);
+}
+
+/* ---------- 区块标题：两端各自的「换位给我听」 ---------- */
+function famRenderSecHead(){
+  var box = document.getElementById('fam-sec-head');
+  if (!box) return;
+  box.innerHTML = '<b>' + famEsc(famOtherLabel()) + ' · 换位给我听</b>' +
+    '<span class="fam-sec-sub">下面是' + famEsc(famIsStudent() ? '爸妈' : '孩子') +
+    '原话的「换位表达」——只转译语气，不改写内容；点「查看原话」看原句</span>';
+}
+
+/* ---------- 身份门：选身份（复用既有 data-action="fam-sender-role"，不再逐条选角色） ----------
+ * ★ 用途改写（只增不减）：这个动作名原本是「每条消息选发送者角色」，
+ *   现在由**身份门**承载 —— 进去时选一次、本地记住、随时可换。
+ *   动作名保持不变，从而不破坏「data-action 与 case 双向覆盖」的静态门禁。 */
+var FAM_IDENTITY_HINT = {
+  student: '我看到的是「爸妈的话」',
+  father:  '我看到的是「孩子的话」',
+  mother:  '我看到的是「孩子的话」',
+  teacher: '我看到的是「孩子的话」'
+};
 function famRenderRoles(){
   var box = document.getElementById('fam-roles');
   if (!box) return;
@@ -6248,11 +6454,13 @@ function famRenderRoles(){
   for (var i = 0; i < FAM_ROLES.length; i++) {
     var r = FAM_ROLES[i];
     var active = (FAM.role === r.code) ? ' active' : '';
-    html += '<button class="fam-role-opt' + active + '" data-action="fam-sender-role" data-role="' + r.code + '">' + r.label + '</button>';
+    html += '<button class="fam-role-opt' + active + '" data-action="fam-sender-role" data-role="' + r.code + '">' +
+              '<b>' + r.label + '</b>' +
+              '<span>' + famEsc(FAM_IDENTITY_HINT[r.code] || '') + '</span>' +
+            '</button>';
   }
   box.innerHTML = html;
 }
-if (typeof FAM === 'object') { FAM.role = 'student'; }
 
 /* ---------- 对比视图：角色下拉选项 ---------- */
 function famCmpOptions(selected){
@@ -6287,11 +6495,16 @@ function famRenderRooms(){
 function famRenderTimeline(emptyReason){
   var box = document.getElementById('fam-timeline');
   if (!box) return;
+  /* ★ 空态文案按「你是哪一端」分岔：学生等的是爸妈的话，家长等的是孩子的话。
+   *   同一句「还没有对话」在两端都不成立，用户看了只会觉得"这功能没做"。 */
+  var baseCopy = famIsStudent()
+    ? '还没有爸妈的消息——先在下面写下你的想法，系统会把它换位成爸妈更容易听进去的说法。'
+    : '孩子还没发言——你可以先把担心写下来，系统会把它换位成孩子更容易听进去的说法。';
   if (!FAM.messages.length) {
     /* ★ 空态文案必须区分「还没有对话」与「连不上 / 唤醒中」。
      *   离线却显示"还没有对话"是在误导用户（首次加载失败时尤其明显）。
      *   W3 验收要求：骨架先渲染、绝不白屏 —— 失败路径也必须走到这里。 */
-    var copy = '还没有对话。在下方写下第一条原话，系统会把它翻译成家人更容易理解的说法。';
+    var copy = baseCopy;
     if (emptyReason === 'offline') copy = '暂时连不上服务，稍后会自动重试。也可以点上方「立即重试」。';
     else if (emptyReason === 'waking') copy = '服务唤醒中，稍后会自动重试。';
     box.innerHTML = '<div class="fam-empty">' + copy + '</div>';
@@ -6304,23 +6517,37 @@ function famRenderTimeline(emptyReason){
   box.innerHTML = html;
 }
 
+/* 「我的消息 / 对方的消息」判定：两端视角的唯一落点 */
+function famMsgIsMine(m){
+  var mySide = famIsStudent() ? 'student' : 'parent';
+  var msgSide = (m && m.sender_role === 'student') ? 'student' : 'parent';
+  return mySide === msgSide;
+}
+
 function famRenderMessage(m){
   var state = m.translation_state || 'pending';
   var roleCls = 'fam-role--' + (m.sender_role || 'student');
+  var mine = famMsgIsMine(m);
   var head = '<div class="fam-msg-head">' +
       '<span class="fam-role ' + roleCls + '">' + (FAM_ROLE_LABEL[m.sender_role] || m.sender_role || '学生') + '</span>' +
       '<span class="fam-dir">' + ((m.direction === 'parent_to_child') ? '→ 孩子' : '→ 父母') + '</span>' +
       '<span class="fam-time">' + famFmtTime(m.created_at) + '</span>' +
-    '</div>';
+    '</div>' +
+    /* ★ 两端画面正是靠这一行文案区分开的：
+     *   自己这侧 = 「我这一侧 · 原话」；对方那侧 = 「爸妈的话 / 孩子的话 · 换位给我听」。 */
+    '<div class="fam-side-tag">' + famEsc(mine ? '我这一侧 · 原话' : (famOtherLabel() + ' · 换位给我听')) + '</div>';
 
   var body = '';
   var folded = !!m.folded;
 
-  /* ★ 原话块统一带「原话」标签：译文与原文必须一眼可辨，否则用户把译文当原文读。 */
-  var rawBlock = '<div class="fam-raw"' + (folded ? ' hidden' : '') + '><b class="fam-tag fam-tag--raw">原话</b>' + famEsc(m.raw_text || '') + '</div>';
+  /* ★ 原话块统一带「原话」标签：译文与原文必须一眼可辨，否则用户把译文当原文读。
+   *   自己写的标「我的原话」，对方写的标「对方原话」。 */
+  var rawTag = mine ? '我的原话' : '对方原话';
+  var rawBlock = '<div class="fam-raw"' + (folded ? ' hidden' : '') + '><b class="fam-tag fam-tag--raw">' + rawTag + '</b>' + famEsc(m.raw_text || '') + '</div>';
+  var transTag = mine ? '换位后的说法（对方会看到）' : '换位译文';
 
   if (state === 'ok') {
-    body += '<div class="fam-translation"><b class="fam-tag fam-tag--trans">换位译文</b>' + famEsc(m.translation_text || '') + '</div>';
+    body += '<div class="fam-translation"><b class="fam-tag fam-tag--trans">' + transTag + '</b>' + famEsc(m.translation_text || '') + '</div>';
     body += rawBlock;
   } else if (state === 'pending') {
     body += '<div class="fam-pending">换位译文生成中…（原话已保存，不会丢失）</div>';
@@ -6366,7 +6593,7 @@ function famRenderMessage(m){
       '</div>';
   }
 
-  return '<div class="fam-msg" data-mid="' + m.id + '">' + head + body + signals + actions + editor + '</div>';
+  return '<div class="fam-msg' + (mine ? ' fam-msg--mine' : ' fam-msg--other') + '" data-mid="' + m.id + '">' + head + body + signals + actions + editor + '</div>';
 }
 
 function famRenderSignals(sigs){
@@ -6388,6 +6615,206 @@ function famRenderSignals(sigs){
   }
   html += '</div>';
   return html;
+}
+
+/* ============================================================================
+ * 我的志愿表（两端各自显示自己那一侧）
+ * ========================================================================== */
+function famRenderMine(){
+  var box = document.getElementById('fam-mine');
+  if (!box) return;
+  var list = FAM.volunteers || [];
+  var h = '<div class="fam-mine-head"><b>我的志愿表</b>' +
+          '<span class="fam-mine-sub">' + famEsc(famIsStudent() ? '我自己看上的' : '我希望的') + '</span></div>';
+  if (!list.length) {
+    h += '<div class="fam-mine-empty">' +
+      famEsc(famIsStudent()
+        ? '还没有志愿想法——去「找学校 / 找专业」加几所，这里会自动出现。'
+        : '你还没有添加想法。可以先写下你的意见，再逐项表态。') +
+      '</div>';
+    box.innerHTML = h;
+    return;
+  }
+  h += '<div class="fam-mine-list">';
+  for (var i = 0; i < list.length; i++) {
+    var v = list[i];
+    h += '<span class="fam-mine-item"><i>' + famEsc(v.kind === 'college' ? '院校' : '专业') + '</i>' +
+         famEsc(v.name || ('#' + v.ref_id)) + '</span>';
+  }
+  h += '</div>';
+  if (FAM.progress) {
+    var waiting = famNum(FAM.progress.total) - famNum(FAM.progress.settled) - famNum(FAM.progress.deferred);
+    var settled = famNum(FAM.progress.settled);
+    h += '<div class="fam-mine-diff">与' + famEsc(famIsStudent() ? '爸妈' : '孩子') + '的分歧项：<b>' + famNum(FAM.progress.total) + '</b> 项' +
+         '（已定 <b>' + settled + '</b> · 待决 <b>' + famNum(FAM.progress.deferred) + '</b> · 未表态 <b>' + Math.max(0, waiting) + '</b>）</div>';
+  }
+  box.innerHTML = h;
+}
+
+/* ============================================================================
+ * 家长端 · 分歧项 + 三态表态 + 收敛进度
+ * ---------------------------------------------------------------------------
+ * 「有则出现、无则不出现」：服务端共识能力不可用时（表未建 / 未就绪），
+ * 连节点一起藏起来 —— 绝不渲染空壳，也绝不编造内容。
+ * 学生端整段不出现（用户已锁定：学生端没有表态区）。
+ * ========================================================================== */
+var FAM_STANCE_OPTS = [
+  { code: 'accept',     label: '可接受',   hint: '我没问题' },
+  { code: 'negotiable', label: '可协商',   hint: '有条件' },
+  { code: 'veto',       label: '不可妥协', hint: '我不接受' }
+];
+var FAM_STANCE_LABEL = { accept: '可接受', negotiable: '可协商', veto: '不可妥协' };
+var FAM_STATUS_LABEL = { pending: '还有人没表态', settled: '已定', deferred: '待决' };
+
+function famRenderStance(){
+  var box = document.getElementById('fam-stance');
+  if (!box) return;
+  if (!famIsParent() || !FAM.consensusReady) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+
+  var items = FAM.items || [];
+  var pg = FAM.progress || { total: 0, settled: 0, pending: 0, deferred: 0 };
+  var h = '<div class="fam-stance-head"><b>分歧项 · 你的态度</b>' +
+          '<span class="fam-stance-sub">同一个问题，你和孩子各自表态。点「不可妥协」必须写清原因和替代方案，不能只说不行。</span></div>';
+  h += '<div class="fam-progress">' +
+         '<span class="fam-progress-chip fam-progress-chip--settled">已定 ' + famNum(pg.settled) + '</span>' +
+         '<span class="fam-progress-chip fam-progress-chip--deferred">待决 ' + famNum(pg.deferred) + '</span>' +
+         '<span class="fam-progress-chip fam-progress-chip--pending">未表态 ' + famNum(pg.pending) + '</span>' +
+         '<span class="fam-progress-chip">共 ' + famNum(pg.total) + ' 项</span>' +
+       '</div>';
+  if (!items.length) {
+    h += '<div class="fam-stance-empty">暂无分歧项。你们的志愿表还没有差异，先用下面的「双志愿表对比」看看，或者写几句你的担心。</div>';
+    box.innerHTML = h;
+    return;
+  }
+  for (var i = 0; i < items.length; i++) h += famStanceItemHTML(items[i]);
+  box.innerHTML = h;
+}
+
+function famStanceItemHTML(it){
+  var id = String(it.item_id);
+  var picked = FAM.stancePick[id] || (it.my_stance && it.my_stance.stance) || '';
+  var mine = it.my_stance || {};
+  var err = FAM.stanceError[id] || '';
+  /* ★ 草稿优先：用户已经打了一半的字，不能因为旁边点了另一项就被擦掉。 */
+  var draft = FAM.stanceDraft[id] || null;
+  var reasonVal = draft ? draft.reason : (mine.reason || '');
+  var subVal = draft ? draft.sub : (picked === 'negotiable' ? (mine.condition || '') : (mine.substitute || ''));
+  var noVal = draft ? draft.noSub : !!mine.no_substitute;
+  var h = '<div class="fam-stance-item" data-item="' + famEsc(id) + '">';
+  h += '<div class="fam-stance-item-head">' +
+         '<span class="fam-stance-kind">' + famEsc(it.item_type === 'axis' ? '观念' : (it.item_type === 'college' ? '院校' : '专业')) + '</span>' +
+         '<span class="fam-stance-name">' + famEsc(it.label || it.ref_key || '') + '</span>' +
+         '<span class="fam-stance-status fam-stance-status--' + famEsc(it.status || 'pending') + '">' + famEsc(FAM_STATUS_LABEL[it.status] || '') + '</span>' +
+       '</div>';
+  h += '<div class="fam-stance-opts">';
+  for (var i = 0; i < FAM_STANCE_OPTS.length; i++) {
+    var o = FAM_STANCE_OPTS[i];
+    var on = (picked === o.code) ? ' active' : '';
+    h += '<button class="fam-stance-opt fam-stance-opt--' + o.code + on + '" data-action="fam-stance-set" data-item="' + famEsc(id) + '" data-stance="' + o.code + '">' +
+           '<b>' + o.label + '</b><span>' + o.hint + '</span>' +
+         '</button>';
+  }
+  h += '</div>';
+  /* ★ 禁止裸否决：选了「不可妥协」才展开强制字段（理由 + 替代方案）；
+   *   「可协商」展开条件字段（可留空）。都用 class 取，不用 id —— 一屏可能有多个项。 */
+  if (picked === 'veto') {
+    h += '<div class="fam-veto-fields">' +
+           '<label class="fam-veto-label">因为什么？（至少 8 字）' +
+             '<textarea class="fam-veto-reason" placeholder="例：这个专业本科毕业很难找到对口工作，我担心四年后没着落">' + famEsc(reasonVal) + '</textarea>' +
+           '</label>' +
+           '<label class="fam-veto-label">除非 / 替代方案（至少 4 字）' +
+             '<textarea class="fam-veto-sub" placeholder="例：除非他能考上研究生，否则我不接受">' + famEsc(subVal) + '</textarea>' +
+           '</label>' +
+           '<label class="fam-veto-nosub"><input type="checkbox"' + (noVal ? ' checked' : '') + ' /><span>我确实没有替代方案，只是表达底线</span></label>' +
+         '</div>';
+  } else if (picked === 'negotiable') {
+    h += '<div class="fam-veto-fields">' +
+           '<label class="fam-veto-label">有什么条件？（可留空，写了更容易谈成）' +
+             '<textarea class="fam-veto-sub" placeholder="例：会计可以，但必须考研 / 必须在省内">' + famEsc(subVal) + '</textarea>' +
+           '</label>' +
+         '</div>';
+  }
+  if (err) h += '<div class="fam-stance-err">' + famEsc(err) + '</div>';
+  h += '<div class="fam-stance-actions">' +
+         '<button class="btn btn--brand" data-action="fam-stance-submit" data-item="' + famEsc(id) + '">提交这项态度</button>' +
+         (mine.stance ? '<span class="fam-stance-mine">已表态：' + famEsc(FAM_STANCE_LABEL[mine.stance] || '') + '</span>' : '') +
+       '</div>';
+  h += '</div>';
+  return h;
+}
+
+function famStanceNode(id){
+  var all = document.querySelectorAll('.fam-stance-item');
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].getAttribute('data-item') === String(id)) return all[i];
+  }
+  return null;
+}
+
+/* 把 DOM 里已输入但未提交的强制字段存入草稿 —— 重渲染（例如点了旁边那一项）不擦字 */
+function famStanceStash(){
+  var all = document.querySelectorAll('.fam-stance-item');
+  for (var i = 0; i < all.length; i++) {
+    var id = String(all[i].getAttribute('data-item') || '');
+    if (!id) continue;
+    var r = all[i].querySelector('.fam-veto-reason');
+    var s = all[i].querySelector('.fam-veto-sub');
+    var n = all[i].querySelector('.fam-veto-nosub input');
+    if (!r && !s && !n) continue;
+    FAM.stanceDraft[id] = {
+      reason: r ? String(r.value || '') : '',
+      sub: s ? String(s.value || '') : '',
+      noSub: n ? !!n.checked : false
+    };
+  }
+}
+
+/* 把后端错误码翻成人话（绝不把 [E_XXX] 这类内部码丢给用户看） */
+function famErrText(err){
+  var msg = (err && err.message) ? String(err.message) : '';
+  if (msg.indexOf('E_VETO_REASON_REQUIRED') > -1) return '请说明你担心的原因（至少 8 字）';
+  if (msg.indexOf('E_VETO_SUBSTITUTE_REQUIRED') > -1) return '请给出替代方案，或勾选「我没有替代方案」';
+  if (msg.indexOf('E_ITEM_FORBIDDEN') > -1) return '这一项不属于你们的家庭';
+  if (msg.indexOf('E_ITEM_NOT_FOUND') > -1) return '这一项已不存在，刷新后重试';
+  if (msg.indexOf('E_STANCE_INVALID') > -1) return '请重新选择态度';
+  if (msg.indexOf('409') > -1) return '这一项刚被更新过，已为你刷新';
+  return '提交失败，请稍后重试';
+}
+
+/* ---------- 共识：读分歧项 + 收敛进度 ---------- */
+function famLoadConsensus(){
+  if (!FAM.role || !FAM.roomId) return Promise.resolve();
+  return famApiGet('/api/family-consensus?userId=' + famUid() +
+                   '&room_id=' + encodeURIComponent(FAM.roomId) +
+                   '&viewer_role=' + encodeURIComponent(FAM.role))
+    .then(function(res){
+      var d = res && res.data;
+      FAM.items = (d && d.items) ? d.items : [];
+      FAM.progress = (d && d.progress) ? d.progress : { total: 0, settled: 0, pending: 0, deferred: 0 };
+      FAM.consensusReady = true;
+      famRenderStance();
+      famRenderMine();
+    })
+    .catch(function(){
+      /* ★ 表没建 / 服务未就绪 → 整段不出现。不白屏、不编造、不弹错误墙。 */
+      FAM.consensusReady = false;
+      FAM.items = [];
+      FAM.progress = null;
+      famRenderStance();
+    });
+}
+
+/* ---------- 我的志愿表：读自己那一侧（学生侧只查 SQLite，无 PG 也能出） ---------- */
+function famLoadMine(){
+  if (!FAM.role) return Promise.resolve();
+  return famApiGet('/api/family-volunteers?userId=' + famUid() +
+                   '&owner_role=' + encodeURIComponent(FAM.role) + '&page=1&size=50')
+    .then(function(res){
+      FAM.volunteers = (res && res.data && res.data.list) ? res.data.list : [];
+      famRenderMine();
+    })
+    .catch(function(){ FAM.volunteers = []; famRenderMine(); });
 }
 
 /* ---------- 工具 ---------- */
@@ -6502,6 +6929,10 @@ function famLoadFamily(silent){
       FAM.fetched = true;
       famStopWake();
       famShowBanner(false);
+      /* ★ 房间号这一刻才确定（可能回落到 rooms[0]），共识与志愿表都按 room_id 归属，
+       *   所以放在这里读，而不是和 famLoadFamily 同时打 —— 否则第一发 consensus 会因
+       *   FAM.roomId 还是空而直接 return，家长端永远看不到分歧项。 */
+      if (FAM.role) { famLoadConsensus(); famLoadMine(); }
     })
     .catch(function(err){
       FAM.isFetching = false;
@@ -6539,7 +6970,21 @@ if (typeof Controller !== 'undefined') {
     famEnsureView();
     UI.switchView('family');
     famRenderRoles();
+    famApplyRole();
+    /* ★ 身份门：还没选身份 → 就停在「你是哪位」这一屏，绝不发任何 D 域请求。 */
+    if (!FAM.role) return;
     famLoadFamily(false);
+    famLoadMine();
+  };
+  Controller.famSwitchRole = function(){
+    /* 回到身份门（清本地记住的身份）。数据不删，重新选回来还在。 */
+    FAM.role = '';
+    try { window.localStorage.removeItem('zy_family_role'); } catch (e) {}
+    FAM.items = []; FAM.progress = null;
+    FAM.stancePick = {}; FAM.stanceError = {}; FAM.stanceDraft = {};
+    FAM.consensusReady = false; FAM.volunteers = [];
+    famRenderRoles();
+    famApplyRole();
   };
   Controller.famSelectRoom = function(roomId){
     if (!roomId) return;
@@ -6549,10 +6994,63 @@ if (typeof Controller !== 'undefined') {
     FAM.messages = [];
     famRenderTimeline();
     famLoadTimeline();
+    if (FAM.role) famLoadConsensus();
   };
   Controller.famSetRole = function(role){
+    if (role !== 'student' && role !== 'father' && role !== 'mother' && role !== 'teacher') return;
     FAM.role = role;
+    try { window.localStorage.setItem('zy_family_role', role); } catch (e) {}
+    /* 切身份 = 换一个画面，不丢数据：消息原样重渲染（换位方向随之翻转）。 */
+    FAM.stancePick = {}; FAM.stanceError = {}; FAM.stanceDraft = {};
+    FAM.consensusReady = false; FAM.items = []; FAM.progress = null; FAM.volunteers = [];
     famRenderRoles();
+    famApplyRole();
+    famRenderTimeline();
+    famLoadFamily(false);
+    famLoadMine();
+  };
+  Controller.famStanceSet = function(itemId, stance){
+    if (!itemId) return;
+    if (stance !== 'veto' && stance !== 'negotiable' && stance !== 'accept') return;
+    if (FAM.stancePick[String(itemId)] === stance) return;   /* 同键重复点：不重渲染，免得擦掉已输入的字 */
+    famStanceStash();
+    FAM.stancePick[String(itemId)] = stance;
+    FAM.stanceError[String(itemId)] = '';
+    famRenderStance();
+  };
+  Controller.famStanceSubmit = function(itemId){
+    var id = String(itemId || '');
+    if (!id) return;
+    var pick = FAM.stancePick[id];
+    if (!pick) { FAM.stanceError[id] = '请先选一个态度'; famRenderStance(); return; }
+    var node = famStanceNode(id);
+    var rEl = node ? node.querySelector('.fam-veto-reason') : null;
+    var sEl = node ? node.querySelector('.fam-veto-sub') : null;
+    var nEl = node ? node.querySelector('.fam-veto-nosub input') : null;
+    var reason = rEl ? String(rEl.value || '').trim() : '';
+    var sub = sEl ? String(sEl.value || '').trim() : '';
+    var noSub = nEl ? !!nEl.checked : false;
+    var condition = '';
+    if (pick === 'negotiable') { condition = sub; sub = ''; }
+    /* ★ 禁止裸否决 —— 前端先拦一道（后端还有 400 [E_VETO_*] 兜底）：
+     *   不合规就地标红、不发请求，用户不会先看到一次"提交失败"再猜哪里错了。 */
+    if (pick === 'veto') {
+      if (reason.length < 8) { FAM.stanceError[id] = '请说明你担心的原因（至少 8 字）'; famRenderStance(); return; }
+      if (!sub && !noSub) { FAM.stanceError[id] = '请给出替代方案，或勾选「我没有替代方案」'; famRenderStance(); return; }
+    }
+    FAM.stanceError[id] = '';
+    famApiSend('PUT', '/api/family-consensus/stance', {
+      userId: famUid(), room_id: FAM.roomId, role: FAM.role, item_id: Number(id),
+      stance: pick, reason: reason, substitute: sub, no_substitute: noSub, condition: condition
+    }).then(function(res){
+      delete FAM.stanceDraft[id];
+      var d = res && res.data;
+      if (d && d.progress) { FAM.progress = d.progress; famRenderMine(); }
+      return famLoadConsensus();
+    }).catch(function(err){
+      FAM.stanceError[id] = famIsWaking(err) ? '服务唤醒中，请稍后重试' : famErrText(err);
+      famRenderStance();
+    });
   };
   Controller.famSend = function(){
     var input = document.getElementById('fam-input');

@@ -54,7 +54,9 @@ if (scriptM) {
 const EXPECTED_ACTIONS = [
   'fam-open', 'fam-select-room', 'fam-sender-role', 'fam-send', 'fam-fold',
   'fam-edit', 'fam-save-edit', 'fam-cancel-edit', 'fam-translate', 'fam-extract',
-  'fam-report', 'fam-cmp-run', 'fam-retry'
+  'fam-report', 'fam-cmp-run', 'fam-retry',
+  /* —— 两端画面（身份门 + 家长端三态表态）新增 —— */
+  'fam-switch-role', 'fam-stance-set', 'fam-stance-submit'
 ];
 const actionRe = /data-action="(fam-[^"]+)"/g;
 const found = new Set();

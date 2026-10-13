@@ -38,6 +38,7 @@ COPY index.html ./
 COPY routes-d/  ./routes-d/
 COPY services/  ./services/
 COPY repo/      ./repo/
+COPY sql/       ./sql/
 
 # 种子库：仓库里这份是「初始种子」，不是运行库。
 # 容器内仍落在 /app/gkzy.db（与 server.js 的 DB_FILE 一致），行为与从前完全相同；

@@ -23,6 +23,7 @@ const express = require('express');
 const pg = require('../repo/pg');
 const ct = require('../services/careerTranslate');
 const ApiError = ct.DomainError;
+const consensus = require('../services/consensus');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 
@@ -686,6 +687,91 @@ router.post('/family-volunteers', ah(async (req, res) => {
 
   const total = (await pg.queryOne('SELECT count(*)::int n FROM public.volunteers WHERE user_id = $1 AND owner_role = $2', [uid, ownerRole])).n;
   res.json({ code: 200, data: { saved: shapeVolRow(saved, ownerRole), total, duplicated } });
+}));
+
+/* ===========================================================================
+ * EP-16 GET /api/family-consensus —— 家长三态表态：共识面板（读）
+ * ---------------------------------------------------------------------------
+ * 流程：算分歧候选（学生/家长侧志愿集合差）→ syncItems 落共识项 →
+ *       listConsensus 返回 items + progress。
+ *   · viewer_role 只用于挑选 my_stance，不参与鉴权。
+ *   · 分歧候选计算整段 try/catch，失败传空数组（绝不 500）。
+ * ========================================================================= */
+router.get('/family-consensus', ah(async (req, res) => {
+  const uid = requireUid(req);
+  if (uid === null) return fail(res, 400, '[E_IDENTITY_MISSING] 缺少 userId');
+  const roomId = req.query.room_id;
+  if (!roomId) return fail(res, 400, '[E_PARAM_INVALID] 缺少 room_id');
+  let viewerRole = req.query.viewer_role || 'student';
+  if (!ROLES.includes(viewerRole)) return fail(res, 400, '[E_ROLE_INVALID] viewer_role 非法');
+
+  if (!pg.isReady()) return notReady(res);
+
+  // 算分歧候选：学生侧（SQLite）与非学生侧（PG）按 kind+' '+ref_id 做集合差，
+  // 只在一侧出现的生成候选。整段 try/catch，失败就传空数组。
+  let candidates = [];
+  try {
+    const student = await loadRoleVolunteers(uid, 'student');
+    const others = await loadNonStudentVolunteers(uid);
+    const keyOf = r => String(r.kind) + ' ' + String(r.ref_id);
+    const mapStud = new Map(student.map(r => [keyOf(r), r]));
+    const mapOther = new Map(others.map(r => [keyOf(r), r]));
+    const onlyOneSide = [];
+    student.forEach(r => { if (!mapOther.has(keyOf(r))) onlyOneSide.push(r); });
+    others.forEach(r => { if (!mapStud.has(keyOf(r))) onlyOneSide.push(r); });
+    candidates = onlyOneSide.map(r => ({
+      item_type: r.kind,
+      ref_key: r.kind + ':' + r.ref_id,
+      label: r.name,
+      source_role: r.owner_role
+    }));
+  } catch (e) {
+    candidates = [];
+  }
+
+  await consensus.syncItems(uid, roomId, candidates);
+  const data = await consensus.listConsensus(uid, roomId, viewerRole);
+  res.json({
+    code: 200,
+    data: {
+      user_id: uid, room_id: roomId, viewer_role: viewerRole,
+      items: data.items, progress: data.progress
+    }
+  });
+}));
+
+/* ===========================================================================
+ * EP-17 PUT /api/family-consensus/stance —— 家长三态表态：写入某角色表态
+ * ---------------------------------------------------------------------------
+ *   校验失败抛 DomainError，交给 ah() 翻成 fail(res, status, '[code] msg')；
+ *   本端点不自己 try/catch 吞 ApiError。
+ * ========================================================================= */
+router.put('/family-consensus/stance', ah(async (req, res) => {
+  const uid = requireUid(req);
+  if (uid === null) return fail(res, 400, '[E_IDENTITY_MISSING] 缺少 userId');
+  const body = req.body || {};
+  const role = body.role;
+  if (!ROLES.includes(role)) return fail(res, 400, '[E_ROLE_INVALID] role 非法');
+  const roomId = body.room_id;
+  if (!roomId) return fail(res, 400, '[E_PARAM_INVALID] 缺少 room_id');
+
+  if (!pg.isReady()) return notReady(res);
+
+  const result = await consensus.putStance({
+    uid,
+    roomId,
+    role,
+    itemId: parseInt(body.item_id, 10),
+    stance: body.stance,
+    reason: body.reason,
+    substitute: body.substitute,
+    noSubstitute: body.no_substitute,
+    condition: body.condition
+  });
+  res.json({
+    code: 200,
+    data: { saved: result.saved, item_status: result.item_status, progress: result.progress }
+  });
 }));
 
 /* ---------- 导出（含测试用）：PG 连接错误判定 + 异步包装（加固自测用） ---------- */
