@@ -6405,7 +6405,9 @@ function famIsWaking(err){
 /* ---------- 冷启动 / 降级：503 横幅 + 轮询（≥5s，隐藏暂停） ---------- */
 function famShowBanner(on){
   var b = document.getElementById('fam-banner');
-  if (b) b.hidden = !on;
+  if (!b) return;
+  b.hidden = !on;
+  b.style.display = on ? 'flex' : 'none';
 }
 function famStartWake(){
   if (FAM.wakeTimer) return;
