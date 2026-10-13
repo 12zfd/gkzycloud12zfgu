@@ -2313,13 +2313,15 @@ const API = {
       return rows.map(r => ({ y: String(r.year), v: Utils.num(r.min_score, 0) }));
     }
     return [
-      { y: '2023', v: adjustedScore - 4 },
-      { y: '2024', v: adjustedScore - 2 },
-      { y: '2025', v: adjustedScore }
+      { y: '2022', v: adjustedScore - 8 },
+      { y: '2023', v: adjustedScore - 6 },
+      { y: '2024', v: adjustedScore - 4 },
+      { y: '2025', v: adjustedScore - 2 },
+      { y: '2026', v: adjustedScore }
     ];
   },
 
-  /** 从远端历年表里挑出「某院校 + 某省份」的记录，按年份升序、最多近三年 */
+  /** 从远端历年表里挑出「某院校 + 某省份」的记录，按年份升序、最多近五年 */
   pickAdmissions(collegeId, provinceName){
     const all = Utils.arr(API.ADMISSIONS);
     if (!all.length) return [];
@@ -2339,7 +2341,7 @@ const API = {
       const cLoose = cur.major_group_id === null || cur.major_group_id === undefined;
       if (rLoose && !cLoose) byYear[y] = r;
     });
-    return Object.keys(byYear).sort().slice(-3).map(y => byYear[y]);
+    return Object.keys(byYear).sort().slice(-5).map(y => byYear[y]);
   },
 
   /**
@@ -2603,20 +2605,28 @@ const API = {
     const all = Utils.arr(API.SCORES);
     if (!all.length) return [];
     const cid = String(collegeId);
-    const best = {};
+    const byMajor = {};
     all.forEach(r => {
       if (String(r.collegeId) !== cid) return;
       const k = String(r.majorId);
-      if (!best[k] || Utils.num(r.year, 0) > Utils.num(best[k].year, 0)) best[k] = r;
+      const cell = (byMajor[k] = byMajor[k] || { latest: null, series: {} });
+      const yr = Utils.num(r.year, 0);
+      cell.series[yr] = r;
+      if (!cell.latest || yr > Utils.num(cell.latest.year, 0)) cell.latest = r;
     });
-    return Object.keys(best).map(k => {
-      const r = best[k];
+    return Object.keys(byMajor).map(k => {
+      const cell = byMajor[k];
+      const r = cell.latest;
       const m = Utils.arr(MAJORS).find(x => String(x.id) === k);
       return {
         id: Utils.num(k, 0), name: m ? String(m.name) : ('专业' + k),
         category: m ? String(m.category) : '', year: Utils.num(r.year, 0),
         minScore: Utils.num(r.minScore, 0), minRank: Utils.num(r.minRank, -1),
-        planCount: Utils.num(r.planCount, 0)
+        planCount: Utils.num(r.planCount, 0),
+        trend: Object.keys(cell.series).sort((a, b) => Utils.num(a, 0) - Utils.num(b, 0)).map(y => {
+          const rr = cell.series[y];
+          return { y: Utils.num(y, 0), v: Utils.num(rr.minScore, 0) };
+        })
       };
     }).sort((a, b) => (b.minScore - a.minScore) || (a.id - b.id));
   },
@@ -2629,21 +2639,29 @@ const API = {
     const all = Utils.arr(API.SCORES);
     if (!all.length) return [];
     const mid = String(majorId);
-    const best = {};
+    const byCollege = {};
     all.forEach(r => {
       if (String(r.majorId) !== mid) return;
       const k = String(r.collegeId);
-      if (!best[k] || Utils.num(r.year, 0) > Utils.num(best[k].year, 0)) best[k] = r;
+      const cell = (byCollege[k] = byCollege[k] || { latest: null, series: {} });
+      const yr = Utils.num(r.year, 0);
+      cell.series[yr] = r;
+      if (!cell.latest || yr > Utils.num(cell.latest.year, 0)) cell.latest = r;
     });
-    return Object.keys(best).map(k => {
-      const r = best[k];
+    return Object.keys(byCollege).map(k => {
+      const cell = byCollege[k];
+      const r = cell.latest;
       const col = Utils.arr(COLLEGES).find(x => String(x.id) === k);
       return {
         id: Utils.num(k, 0), name: col ? String(col.name) : ('院校' + k),
         level: col ? String(col.level) : '', province: col ? String(col.province) : '',
         year: Utils.num(r.year, 0),
         minScore: Utils.num(r.minScore, 0), minRank: Utils.num(r.minRank, -1),
-        planCount: Utils.num(r.planCount, 0)
+        planCount: Utils.num(r.planCount, 0),
+        trend: Object.keys(cell.series).sort((a, b) => Utils.num(a, 0) - Utils.num(b, 0)).map(y => {
+          const rr = cell.series[y];
+          return { y: Utils.num(y, 0), v: Utils.num(rr.minScore, 0) };
+        })
       };
     }).sort((a, b) => (b.minScore - a.minScore) || (a.id - b.id));
   },
@@ -3683,8 +3701,15 @@ const UI = {
     const avgMetric = (latest && Utils.num(latest.avg_score, 0) > 0)
       ? metric('平均分', Utils.num(latest.avg_score, 0) + ' 分', 'var(--ink-2)')
       : '';
+    /* 提示语写「年份区间」而不是单一最新年：下方「历年录取最低分」那一排是五年趋势，
+       只写 2026 会让人以为只有一年数据。区间取自 c.years（真实数据），不硬编码。 */
+    const yrSpan = Utils.arr(c.years).length
+      ? (c.years[0].y === c.years[c.years.length - 1].y
+          ? c.years[0].y
+          : c.years[0].y + '–' + c.years[c.years.length - 1].y)
+      : '';
     const rankHint = latest
-      ? (Utils.escapeHTML(latest.year) + ' 年 · ' + Utils.escapeHTML(latest.subject_type || '物理类'))
+      ? (Utils.escapeHTML(yrSpan || latest.year) + ' 年 · ' + Utils.escapeHTML(latest.subject_type || '物理类'))
       : (Utils.escapeHTML(prov.name) + ' · 物理类');
 
     /* —— 专业组：college_major_groups 有数据时才渲染这一区 ——
@@ -3730,17 +3755,29 @@ const UI = {
     const majorScoreBlock = majorScores.length ? (
       '<div class="sec-head" style="margin-top:16px">' +
         '<span class="sec-title">各专业录取分数</span>' +
-        '<span class="sec-more">' + majorScores.length + ' 个专业 · ' + Utils.escapeHTML(majorScores[0].year) + ' 年</span>' +
+        /* ★ 标题写「年份区间」而不是「最新一年」：下面每条都是五年趋势条，
+           只写单年会误导。区间取自数据本身，不硬编码。 */
+        '<span class="sec-more">' + majorScores.length + ' 个专业 · ' +
+          Utils.escapeHTML(Utils.arr(majorScores[0].trend).length
+            ? (majorScores[0].trend[0].y + '–' + majorScores[0].trend[majorScores[0].trend.length - 1].y)
+            : (majorScores[0].year + ' 年')) + '</span>' +
       '</div>' +
-      majorScores.map(s => '' +
-        '<div class="card" style="padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:9px">' +
-          '<span style="flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-            Utils.escapeHTML(s.name) + '</span>' +
-          '<span class="tag tag--rush">' + s.minScore + ' 分</span>' +
-          '<span style="font-size:var(--t-xs);color:var(--ink-3);width:70px;text-align:right">' +
-            Utils.fmtNum(s.minRank) + ' 名</span>' +
-        '</div>'
-      ).join('') +
+      majorScores.map(s => {
+        const trend = Utils.arr(s.trend).map(t =>
+          '<div class="yr"><b>' + Utils.escapeHTML(t.v) + '</b><span>' + Utils.escapeHTML(t.y) + '</span></div>'
+        ).join('');
+        return '' +
+        '<div class="card" style="padding:11px 14px;margin-bottom:8px">' +
+          '<div style="display:flex;align-items:center;gap:9px">' +
+            '<span style="flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+              Utils.escapeHTML(s.name) + '</span>' +
+            '<span class="tag tag--rush">' + s.minScore + ' 分</span>' +
+            '<span style="font-size:var(--t-xs);color:var(--ink-3);width:70px;text-align:right">' +
+              Utils.fmtNum(s.minRank) + ' 名</span>' +
+          '</div>' +
+          (trend ? '<div class="score-trend">' + trend + '</div>' : '') +
+        '</div>';
+      }).join('') +
       '<p style="font-size:var(--t-xs);color:var(--ink-3);margin:8px 0 0;line-height:1.65">' +
         '各专业按最新一年参考录取分从高到低排列；分数与位次为模型估算值（本产品自编），非官方数据，' +
         '实际录取以各省教育考试院公布为准。</p>'
@@ -3783,8 +3820,8 @@ const UI = {
       '</div>' +
       '<p style="font-size:var(--t-xs);color:var(--ink-3);margin:14px 0 0;line-height:1.65">' +
         (hist.length
-          ? '历年分数与位次来自院校往年在' + Utils.escapeHTML(prov.name) + '的录取结果，仅供参考；'
-          : '数据基于 2026 年招生计划与近三年录取位次模型估算，仅供参考；') +
+          ? '历年分数与位次来自院校近五年在' + Utils.escapeHTML(prov.name) + '的录取结果，仅供参考；'
+          : '数据基于 2026 年招生计划与近五年录取位次模型估算，仅供参考；') +
         '实际录取以各省教育考试院公布为准。</p>';
   },
 
@@ -3810,18 +3847,29 @@ const UI = {
     const majorScoreBlock = majorScoreRows.length ? (
       '<div class="sec-head" style="margin-top:16px">' +
         '<span class="sec-title">该专业在各校的录取分数</span>' +
-        '<span class="sec-more">共 ' + majorScoreRows.length + ' 所 · ' + Utils.escapeHTML(majorScoreRows[0].year) + ' 年</span>' +
+        /* ★ 同「各专业录取分数」：标题给年份区间，不写单年。 */
+        '<span class="sec-more">共 ' + majorScoreRows.length + ' 所 · ' +
+          Utils.escapeHTML(Utils.arr(majorScoreRows[0].trend).length
+            ? (majorScoreRows[0].trend[0].y + '–' + majorScoreRows[0].trend[majorScoreRows[0].trend.length - 1].y)
+            : (majorScoreRows[0].year + ' 年')) + '</span>' +
       '</div>' +
       '<div class="school-list">' +
-        majorScoreRows.slice(0, 8).map(s => '' +
-          '<div class="card" style="padding:11px 14px;display:flex;align-items:center;gap:9px">' +
-            '<span style="flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-              Utils.escapeHTML(s.name) + '</span>' +
-            '<span class="tag tag--rush">' + s.minScore + ' 分</span>' +
-            '<span style="font-size:var(--t-xs);color:var(--ink-3);width:70px;text-align:right">' +
-              Utils.fmtNum(s.minRank) + ' 名</span>' +
-          '</div>'
-        ).join('') +
+        majorScoreRows.slice(0, 8).map(s => {
+          const trend = Utils.arr(s.trend).map(t =>
+            '<div class="yr"><b>' + Utils.escapeHTML(t.v) + '</b><span>' + Utils.escapeHTML(t.y) + '</span></div>'
+          ).join('');
+          return '' +
+          '<div class="card" style="padding:11px 14px">' +
+            '<div style="display:flex;align-items:center;gap:9px">' +
+              '<span style="flex:1;min-width:0;font-size:var(--t-sm);color:var(--ink);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+                Utils.escapeHTML(s.name) + '</span>' +
+              '<span class="tag tag--rush">' + s.minScore + ' 分</span>' +
+              '<span style="font-size:var(--t-xs);color:var(--ink-3);width:70px;text-align:right">' +
+                Utils.fmtNum(s.minRank) + ' 名</span>' +
+            '</div>' +
+            (trend ? '<div class="score-trend">' + trend + '</div>' : '') +
+          '</div>';
+        }).join('') +
       '</div>' +
       '<p style="font-size:var(--t-xs);color:var(--ink-3);margin:8px 0 0;line-height:1.65">' +
         (majorScoreRows.length > 8 ? '仅列出参考分最高的 8 所；' : '') +

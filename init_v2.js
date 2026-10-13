@@ -293,7 +293,7 @@ function rankOf(score, cnt) {
   return Math.max(1, Math.round(rankAnchor(score) * scale));
 }
 
-const YEARS = [2023, 2024, 2025];
+const YEARS = [2022, 2023, 2024, 2025, 2026];
 
 db.exec('BEGIN');
 try {

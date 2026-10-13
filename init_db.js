@@ -10,7 +10,7 @@
  *   majors(专业)             : 50 行    ← 真实专业名称与所属门类
  *   careers(职业)            : 20 行
  *   news(资讯)               : 4 行
- *   admission_scores(录取分) : 每所院校 10~15 个专业 × 2023/2024/2025 三年
+ *   admission_scores(录取分) : 每所院校 10~15 个专业 × 2022/2023/2024/2025/2026 五年
  *   volunteers(志愿表)       : 不动
  *
  * ★ 关于数据来源，请务必读这一段（这是本文件的诚实声明）
@@ -330,7 +330,7 @@ const NEWS = NEWS_ROWS.map(r => ({
  * ② 每条记录的录取最低分：
  *      最低分 = 院校参考分 + 专业热度修正 + 年份趋势 + 抖动
  *      · 专业热度修正 =（就业率 − 84）× 0.55     → 热门专业分数线更高
- *      · 年份趋势     = (年份 − 2025) × 2        → 2023 年比 2025 年低 4 分
+ *      · 年份趋势     = (年份 − 2025) × 2        → 2025 年仍为基准（现覆盖 2022-2026 五年）
  *      · 抖动         = ±2 分                    → 同一院校同一专业每年固定
  *    再夹到 [430, 730] 之间，不会出现离谱分数。
  *
@@ -412,7 +412,8 @@ function pickMajorsFor(college, rng){
   return picked;
 }
 
-const YEARS = [2023, 2024, 2025];
+const YEARS = [2022, 2023, 2024, 2025, 2026];
+const LATEST_YEAR = Math.max.apply(null, YEARS);
 
 /** 生成全部「院校 × 专业 × 年份」录取记录 */
 function buildAdmissionScores(){
@@ -447,7 +448,7 @@ const SCORES = buildAdmissionScores();
 (function fillMajorColleges(){
   const best = {};                                        // major_id → [{collegeId, score}]
   SCORES.forEach(r => {
-    if (r.year !== 2025) return;
+    if (r.year !== LATEST_YEAR) return;
     (best[r.major_id] = best[r.major_id] || []).push({ cid: r.college_id, s: r.min_score });
   });
   MAJORS.forEach(m => {
