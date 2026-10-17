@@ -1363,7 +1363,7 @@ const PROVINCES = [
   { name:'内蒙古', fullName:'内蒙古自治区', code:'150000', line:367, count: 12000, offset:-15, seq:28, mode:'3+1+2', region:'华北' },
   { name:'广西', fullName:'广西壮族自治区', code:'450000', line:369, count: 15000, offset:-16, seq:29, mode:'3+1+2', region:'华南' },
   { name:'西藏', fullName:'西藏自治区', code:'540000', line:305, count:  2000, offset:-30, seq:30, mode:'3+1+2', region:'西南' },
-  { name:'深圳', fullName:'深圳市', code:'440300', line:500, count:  5000, offset:  0, seq:31, mode:'3+1+2', region:'华南' }
+  { name:'江西', fullName:'江西省', code:'360000', line:433, count:210000, offset:  0, seq:31, mode:'3+1+2', region:'华东' }
 ];
 
 /**
@@ -1573,6 +1573,8 @@ const Env = {
     '</div>';
   }
 };
+/* 挂载到 UI：院校详情页（collegeSheetHTML）引用 UI.envBlockHTML(c) */
+UI.envBlockHTML = function(college){ return Env.blockHTML(college); };
 /* 生活环境推导系统（确定性，无 Math.random）
  * 字段说明：
  *   name  : 院校全称（用于 guessType 推断）

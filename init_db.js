@@ -54,7 +54,7 @@ const DB_FILE = path.join(__dirname, 'gkzy.db');
  * ========================================================================= */
 
 /* 生源省份：name 省名 / line 批次线 / cnt 考生规模 / offset 分数偏移 / seq 排序 */
-const P = { name:0, line:1, cnt:2, offset:3, seq:4, fullName:5, code:6, region:7, mode:8 };
+const P = { name:0, fullName:1, code:2, line:3, cnt:4, offset:5, seq:6, mode:7, region:8 };
 const PROVINCE_ROWS = [
   ['河南','河南省','410000',512,700000,6,1,'3+1+2','华中'],
   ['山东','山东省','370000',444,420000,3,2,'3+1+2','华东'],
@@ -85,8 +85,8 @@ const PROVINCE_ROWS = [
   ['新疆','新疆维吾尔自治区','650000',354,9000,-18,27,'3+1+2','西北'],
   ['内蒙古','内蒙古自治区','150000',367,12000,-15,28,'3+1+2','华北'],
   ['广西','广西壮族自治区','450000',369,15000,-16,29,'3+1+2','华南'],
-  ['西藏','西藏自治区','540000',305,2000,-30,30,'3+1+2','西南']
-];
+  ['西藏','西藏自治区','540000',305,2000,-30,30,'3+1+2','西南'],
+  ['江西','江西省','360000',433,210000,0,31,'3+1+2','华东']
 ];
 
 /* 院校：name 校名 / abbr 简称 / province 所在省 / city 所在市 / level 层次 /
@@ -489,7 +489,11 @@ create table if not exists provinces (
   line         integer not null default 0,
   cnt          integer not null default 0,
   score_offset integer not null default 0,
-  seq          integer not null default 0
+  seq          integer not null default 0,
+  full_name    text    not null default '',
+  code         text    not null default '',
+  mode         text    not null default '3+1+2',
+  region       text    not null default ''
 );
 
 create table if not exists colleges (
