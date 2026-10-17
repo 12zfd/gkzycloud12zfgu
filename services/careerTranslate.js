@@ -21,6 +21,8 @@
 
 const pg = require('../repo/pg');
 const rules = require('./translatorRules');
+const EE = require('./emotionEngine');     // 新引擎：analyze / selectSegments / renderTranslation / confidenceOf
+const corpus = require('./translationCorpus'); // 语料库（entries / variants / slot_catalog）
 
 /* 域级错误：携带 HTTP 状态与业务码（[E_XXX] 前缀由路由拼接进 message） */
 class DomainError extends Error {
@@ -105,7 +107,7 @@ async function translateMessage(msg) {
   const rawText = msg.raw_text;
   const direction = msg.direction; // child_to_parent | parent_to_child（服务端防伪推导，见 routes-d）
 
-  // 1) 红线前置门（命中 → 写 flagged，不产出译文）
+  // 1) 红线前置门（命中 → 写 flagged，不产出译文）—— RED_LINES 逐字节不变，硬门行为不变
   const redLine = _redLineCheck(rawText);
   if (redLine) {
     await flagMessage(msg.id, 'sys:' + redLine, 'sys');
@@ -113,35 +115,36 @@ async function translateMessage(msg) {
     return { state: 'flagged', row };
   }
 
-  // 2) 只把 raw_text 当输入（绝不把译文当输入）；方向决定读者视角（双向对称）
-  const res = rules.translate(rawText, direction);
-  if (res && res.ok) {
-    const dims = await loadDimCache();
-    const text = rules.renderFourPart(res.parsed, dims, direction);
+  // 2) 新引擎：analyze → 无轴则 failed（绝不伪造译文）→ selectSegments → renderTranslation
+  const fv = EE.analyze(rawText, direction);
+  if (fv.axis === null) {
     const row = await pg.queryOne(
       `UPDATE public.family_message
-          SET translation_text      = $1,
-              translation_version   = $2,
-              translation_status    = 'done',
-              translation_engine    = $3,
-              translated_by         = $4
-        WHERE id = $5
+          SET translation_status = 'failed',
+              translation_text   = NULL
+        WHERE id = $1
         RETURNING *`,
-      [text, msg.raw_version, res.engine || 'rules@1.0.0', 'auto', msg.id]
+      [msg.id]
     );
-    return { state: 'done', row };
+    return { state: 'failed', row };
   }
 
-  // 3) L2：未命中任何规则 → failed，translation_text 必须 NULL，绝不伪造译文（绝不原话直发）
+  // 3) 灰区（hurt>=3 且未命中红线）由引擎在 renderTranslation 内执行 M4/M5/M6/M10 去伤害化
+  const entry = EE.selectEntry(fv, direction, rawText);
+  const segs = EE.selectSegments(fv, entry, corpus);
+  const text = EE.renderTranslation(fv, entry, segs);
   const row = await pg.queryOne(
     `UPDATE public.family_message
-        SET translation_status = 'failed',
-            translation_text   = NULL
-      WHERE id = $1
+        SET translation_text      = $1,
+            translation_version   = $2,
+            translation_status    = 'done',
+            translation_engine    = $3,
+            translated_by         = $4
+      WHERE id = $5
       RETURNING *`,
-    [msg.id]
+    [text, msg.raw_version, EE.ENGINE_VERSION, 'auto', msg.id]
   );
-  return { state: 'failed', row };
+  return { state: 'done', row };
 }
 
 /* ---------------------------------------------------------------- *
