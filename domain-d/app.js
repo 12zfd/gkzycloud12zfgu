@@ -4,7 +4,7 @@
  * 由 domain-d/inject.js 内联为独立 D 域脚本块（块 id="d-domain"）。
  *
  * 纪律（务必满足 .workbuddy/qa/_accept19.js 静态层门禁）：
- *   1) 不写 console.* / debugger；
+ *   1) 不写任何日志调用与断点语句；
  *   2) 不写 addEventListener('click') / closest('[data-action]') —— 复用主脚本的
  *      单一 click 委托入口（dispatch → switch(action) → case 'fam-*'）；
  *   3) 不写任何 on* 内联事件；所有交互只走 data-action + 派发表；
@@ -131,6 +131,12 @@ function famEnsureView(){
           '</div>' +
           '<div class="fam-compare-result" id="fam-cmp-result"></div>' +
         '</div>' +
+        '<div class="fam-shell" id="fam-shell" hidden>' +
+          '<div class="fam-overview" id="fam-overview"></div>' +
+          '<div class="fam-subtabs" id="fam-subtabs"></div>' +
+          '<div class="fam-graph" id="fam-graph"></div>' +
+        '</div>' +
+        '<div class="fam-dock" id="fam-dock"></div>' +
       '</div>' +
     '</div>';
   var app = document.getElementById('app');
@@ -155,6 +161,9 @@ function famApplyRole(){
     var st = document.getElementById('fam-stance');
     if (st) { st.hidden = true; st.innerHTML = ''; }
   }
+  /* ★ 独立壳：进入家庭（body.fam-standalone）时渲染图形化壳（概览 + 子页签 + 下钻），
+   *   legacy 文本布局（fam-main）按 CSS 作用域隐藏；两者 DOM 都在，只切显隐，不卸载。 */
+  if (document.body.classList.contains('fam-standalone')) famRenderShell();
 }
 
 /* ---------- 顶栏：当前身份 + 切换入口 ---------- */
@@ -533,6 +542,7 @@ function famLoadConsensus(){
       FAM.consensusReady = true;
       famRenderStance();
       famRenderMine();
+      famRenderShell();
     })
     .catch(function(){
       /* ★ 表没建 / 服务未就绪 → 整段不出现。不白屏、不编造、不弹错误墙。 */
@@ -540,6 +550,7 @@ function famLoadConsensus(){
       FAM.items = [];
       FAM.progress = null;
       famRenderStance();
+      famRenderShell();
     });
 }
 
@@ -706,6 +717,8 @@ function famLoadTimeline(){
 if (typeof Controller !== 'undefined') {
   Controller.famOpen = function(){
     famEnsureView();
+    if (typeof State !== 'undefined' && State.nav) FAM.prevNav = State.nav;
+    document.body.classList.add('fam-standalone');
     UI.switchView('family');
     famRenderRoles();
     famApplyRole();
@@ -755,12 +768,13 @@ if (typeof Controller !== 'undefined') {
     FAM.stancePick[String(itemId)] = stance;
     FAM.stanceError[String(itemId)] = '';
     famRenderStance();
+    famRenderShell();
   };
   Controller.famStanceSubmit = function(itemId){
     var id = String(itemId || '');
     if (!id) return;
     var pick = FAM.stancePick[id];
-    if (!pick) { FAM.stanceError[id] = '请先选一个态度'; famRenderStance(); return; }
+    if (!pick) { FAM.stanceError[id] = '请先选一个态度'; famRenderStance(); famRenderShell(); return; }
     var node = famStanceNode(id);
     var rEl = node ? node.querySelector('.fam-veto-reason') : null;
     var sEl = node ? node.querySelector('.fam-veto-sub') : null;
@@ -773,8 +787,8 @@ if (typeof Controller !== 'undefined') {
     /* ★ 禁止裸否决 —— 前端先拦一道（后端还有 400 [E_VETO_*] 兜底）：
      *   不合规就地标红、不发请求，用户不会先看到一次"提交失败"再猜哪里错了。 */
     if (pick === 'veto') {
-      if (reason.length < 8) { FAM.stanceError[id] = '请说明你担心的原因（至少 8 字）'; famRenderStance(); return; }
-      if (!sub && !noSub) { FAM.stanceError[id] = '请给出替代方案，或勾选「我没有替代方案」'; famRenderStance(); return; }
+      if (reason.length < 8) { FAM.stanceError[id] = '请说明你担心的原因（至少 8 字）'; famRenderStance(); famRenderShell(); return; }
+      if (!sub && !noSub) { FAM.stanceError[id] = '请给出替代方案，或勾选「我没有替代方案」'; famRenderStance(); famRenderShell(); return; }
     }
     FAM.stanceError[id] = '';
     famApiSend('PUT', '/api/family-consensus/stance', {
@@ -787,7 +801,7 @@ if (typeof Controller !== 'undefined') {
       return famLoadConsensus();
     }).catch(function(err){
       FAM.stanceError[id] = famIsWaking(err) ? '服务唤醒中，请稍后重试' : famErrText(err);
-      famRenderStance();
+      famRenderStance(); famRenderShell();
     });
   };
   Controller.famSend = function(){
@@ -966,3 +980,398 @@ function famRenderCompare(data){
 }
 
 function famNum(n){ return (n == null ? 0 : n); }
+
+/* ============================================================================
+ * 家庭独立 UI（2026-09-23 规格）：独立壳 + 图形化信息架构
+ * ---------------------------------------------------------------------------
+ * 全部挂在既有 FAM.* 状态与既有委托入口上；不新增第二个 click 监听、不引入内联
+ * 事件 / 日志调用 / 断点语句 / 图片标签。图形组件名、CSS 变量名、文案一律照规格书抄写。
+ * ========================================================================== */
+
+/* 子页签：学生端 我的话/爸妈的话/共识/我的志愿表；家长端 分歧/孩子的话/共识/我的志愿表 */
+function famSubtabDefs(){
+  return famIsStudent()
+    ? [['mine-mirror','我的话'],['other-pair','爸妈的话'],['consensus','共识'],['mine','我的志愿表']]
+    : [['lanes','分歧'],['other-pair','孩子的话'],['consensus','共识'],['mine','我的志愿表']];
+}
+function famDefaultSubtab(){ return famIsStudent() ? 'mine-mirror' : 'lanes'; }
+function famDockMap(){
+  return { 'mine-mirror':'说句话', 'lanes':'分歧', 'other-pair':(famIsStudent()?'爸妈的话':'孩子的话'), 'consensus':'共识', 'mine':'我的志愿表' };
+}
+
+/* 独立壳总渲染：身份条 + 概览 + 子页签 + 下钻 + 底栏（仅家庭态显示） */
+function famRenderShell(){
+  var shell = document.getElementById('fam-shell');
+  if (!shell) return;
+  if (!FAM.role) { shell.hidden = true; shell.innerHTML = ''; return; }
+  shell.hidden = false;
+  /* ★ 重渲染前先把已输入但未提交的强制字段存入草稿，避免旁边点一下就擦掉用户的字 */
+  famStanceStash();
+  if (!FAM.subtab) FAM.subtab = famDefaultSubtab();
+  var idbar =
+    '<div class="fam-idbar">' +
+      '<span class="fam-idbar-chip ' + (famIsStudent() ? 'fam-idbar-chip--student' : 'fam-idbar-chip--parent') + '">' +
+        famEsc((famIsStudent() ? '学生视角' : '家长视角') + ' · ' + famRole(FAM.role)) +
+      '</span>' +
+      '<button class="btn btn--ghost" data-action="fam-switch-role">切换身份</button>' +
+    '</div>';
+  var overview = famRenderOverview();
+  var subtabs = famRenderSubtabs();
+  var graph = famRenderGraph();
+  var dock = famRenderDock();
+  shell.innerHTML = idbar + overview + subtabs + graph + dock;
+}
+
+/* 独立壳底栏（含退出家庭；其余 dock 项用本地子页签切换，避免新增第二个 click 监听） */
+function famRenderDock(){
+  if (!FAM.role) return '';
+  var defs = famSubtabDefs();
+  var map = famDockMap();
+  var primary = famIsStudent() ? 'mine-mirror' : 'lanes';
+  var secondary = 'other-pair';
+  var h = '';
+  h += '<button class="fam-dock-item' + (FAM.subtab === primary ? ' fam-dock-item--active' : '') + '" data-action="fam-subtab" data-tab="' + primary + '">' + famEsc(map[primary]) + '</button>';
+  h += '<button class="fam-dock-item' + (FAM.subtab === secondary ? ' fam-dock-item--active' : '') + '" data-action="fam-subtab" data-tab="' + secondary + '">' + famEsc(map[secondary]) + '</button>';
+  h += '<button class="fam-dock-item fam-dock-exit" data-action="fam-exit">退出家庭</button>';
+  return h;
+}
+
+/* 子页签条 */
+function famRenderSubtabs(){
+  var defs = famSubtabDefs();
+  var h = '<div class="fam-subtabs">';
+  for (var i = 0; i < defs.length; i++) {
+    var active = (FAM.subtab === defs[i][0]) ? ' fam-subtab--active' : '';
+    h += '<button class="fam-subtab' + active + '" data-action="fam-subtab" data-tab="' + defs[i][0] + '">' + famEsc(defs[i][1]) + '</button>';
+  }
+  h += '</div>';
+  return h;
+}
+
+/* 概览屏：收敛环 + 5 轴色带 + 筹码账本（家长端）+ 强制声明位 */
+function famRenderOverview(){
+  var pg = FAM.progress || { total: 0, settled: 0, pending: 0, deferred: 0 };
+  var total = famNum(pg.total), settled = famNum(pg.settled), deferred = famNum(pg.deferred);
+  var pct = (total > 0) ? (settled / total) : 0;
+  var h = '<div class="fam-overview">';
+  h += '<div class="fam-overview-top">' + famRenderRing(pct, settled, total) +
+       '<div class="fam-overview-meta"><b>' + settled + ' / ' + total + ' 已定</b>' +
+       '<span>待决 ' + deferred + ' · 未表态 ' + famNum(pg.pending) + '</span></div></div>';
+  h += famRenderAxisbar();
+  h += famRenderLedger();
+  h += '<div class="fam-emotion-disclaimer">本产品自编沟通口径：情绪与伤人性为「智愿」自编沟通口径，用于把话说轻，不是心理学测评或诊断。</div>';
+  h += '<div class="fam-final-note">家庭内部记录，非法律协议</div>';
+  h += '</div>';
+  return h;
+}
+
+/* 收敛环 donut（SVG circle + stroke-dasharray，由 settled/total 派生） */
+function famRenderRing(pct, settled, total){
+  var r = 32, c = 2 * Math.PI * r;
+  var fg = c * pct;
+  var dash = fg.toFixed(2) + ' ' + c.toFixed(2);
+  return '<div class="fam-ring">' +
+    '<svg viewBox="0 0 84 84" width="84" height="84">' +
+      '<circle class="fam-ring-bg" cx="42" cy="42" r="' + r + '"></circle>' +
+      '<circle class="fam-ring-fg" cx="42" cy="42" r="' + r + '" stroke-dasharray="' + dash + '"></circle>' +
+    '</svg>' +
+    '<div class="fam-ring-num">' + Math.round(pct * 100) + '%<small>' + settled + '/' + total + ' 已定</small></div>' +
+  '</div>';
+}
+
+/* 5 轴分歧色带（颜色 + 文字双编码，色盲可用；缺轴项按未涉及处理，不编造） */
+function famAxisStates(){
+  var map = {};
+  var items = FAM.items || [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    if (it && it.item_type === 'axis') {
+      var axis = String(it.axis_code || it.ref_key || '').toUpperCase().replace(/^AXIS[:_ ]?/, '');
+      if (!axis) continue;
+      var st = (it.status === 'settled') ? 'ok' : (it.status === 'deferred') ? 'stop' : (it.status === 'pending' || it.status === 'open') ? 'warn' : 'none';
+      map[axis] = st;
+    }
+  }
+  return map;
+}
+function famRenderAxisbar(){
+  var states = famAxisStates();
+  var labels = { ok: '一致', warn: '协商', stop: '底线', none: '未涉及' };
+  var names = { A: '热爱vs稳定', B: '收入vs编制', C: '大城市vs近', D: '新兴vs铁饭碗', E: '新信息vs经验' };
+  var keys = ['A', 'B', 'C', 'D', 'E'];
+  var h = '<div class="fam-axisbar">';
+  for (var i = 0; i < keys.length; i++) {
+    var st = states[keys[i]] || 'none';
+    h += '<div class="fam-axisbar-seg fam-axisbar-seg--' + st + '" data-state="' + st + '">' +
+         '<b>轴 ' + keys[i] + ' · ' + famEsc(names[keys[i]]) + '</b>' +
+         '<span>' + labels[st] + '</span></div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+/* 筹码账本对等条（家长端；无让步数据则不画） */
+function famRenderLedger(){
+  if (!famIsParent()) return '';
+  var pg = FAM.progress || {};
+  var con = (pg.ledger && pg.ledger.concessions) || {};
+  var child = famNum(con.student), parent = famNum(con.father) + famNum(con.mother);
+  if (child === 0 && parent === 0) return '';
+  var sum = child + parent;
+  var cg = (sum > 0) ? (child / sum * 100) : 50;
+  return '<div class="fam-ledger"><div class="fam-ledger-bar">' +
+    '<div class="fam-ledger-seg fam-ledger-seg--child" style="flex-grow:' + child + '"></div>' +
+    '<div class="fam-ledger-seg fam-ledger-seg--parent" style="flex-grow:' + parent + '"></div>' +
+    '</div><div class="fam-ledger-legend"><span>孩子 ▓ ' + child + ' 次让步</span><span>家长 ▓ ' + parent + ' 次让步</span></div></div>';
+}
+
+/* 下钻屏：按子页签渲染 */
+function famRenderGraph(){
+  var t = FAM.subtab || famDefaultSubtab();
+  if (FAM.offline && (t === 'mine-mirror' || t === 'other-pair' || t === 'lanes')) {
+    return '<div class="fam-graph"><div class="fam-graph-empty">暂时连不上服务，稍后会自动重试。也可以点上方「立即重试」。</div></div>';
+  }
+  if (t === 'mine-mirror') return '<div class="fam-graph">' + famRenderMirrorList(true) + '</div>';
+  if (t === 'other-pair') return '<div class="fam-graph">' + famRenderMirrorList(false) + '</div>';
+  if (t === 'lanes') return famRenderLanes();
+  if (t === 'consensus') return famRenderConsensus();
+  if (t === 'mine') return famRenderMineGraph();
+  return '<div class="fam-graph"></div>';
+}
+
+/* 情绪镜 / 对照：我的话（mine=true）逐条下钻；爸妈的话/孩子的话（mine=false）三节点连线 */
+function famRenderMirrorList(mine){
+  var list = FAM.messages || [];
+  var h = '';
+  if (!list.length) {
+    h += '<div class="fam-graph-empty">' + famEsc(famIsStudent()
+      ? '还没有爸妈的消息——先在下面写下你的想法，系统会把它换位成爸妈更容易听进去的说法。'
+      : '孩子还没发言——你可以先把担心写下来，系统会把它换位成孩子更容易听进去的说法。') + '</div>';
+    return h;
+  }
+  for (var i = 0; i < list.length; i++) {
+    var m = list[i];
+    if (mine && !famMsgIsMine(m)) continue;
+    if (!mine && famMsgIsMine(m)) continue;
+    h += famRenderMessageCard(m, mine);
+  }
+  if (!h) h += '<div class="fam-graph-empty">' + famEsc(famIsStudent() ? '你和爸妈还没有对照的内容，去「说句话」写几句试试。' : '你和孩子还没有对照的内容。') + '</div>';
+  return h;
+}
+
+/* 单条消息卡片：红线 → 安全卡；否则 原话→去伤害化→换位译文 三节点 + 情绪刻度 + 置信度 */
+function famRenderMessageCard(m, mine){
+  var em = m.emotion || null;
+  if (em && em.red_line) return famSafeCard(m);          // 红线：安全卡，不画译文连线
+  var h = '<div class="fam-mirror">';
+  if (mine) {
+    h += '<div class="fam-mirror-quote">「' + famEsc(m.raw_text || '') + '」</div>';
+    h += famScaleBlock(em);
+    h += famBadges(em);
+    h += famPairBlock(m);
+    h += famConfDotsBlock(em);
+  } else {
+    h += famPairBlock(m);
+    h += famScaleBlock(em);
+    h += famConfDotsBlock(em);
+  }
+  h += '</div>';
+  return h;
+}
+
+/* 原话 → 去伤害化 → 换位译文 三节点连线；译文未就绪/降级则占位不编造 */
+function famPairBlock(m){
+  var em = m.emotion || null;
+  var red = !!(em && em.red_line);
+  var raw = m.raw_text || '';
+  var trans = (m.translation_state === 'ok') ? (m.translation_text || '') : '';
+  var h = '<div class="fam-pair">';
+  h += '<div class="fam-pair-raw"><b class="fam-tag fam-tag--raw">原话</b>' + famEsc(raw) + '</div>';
+  if (em && em.hurt >= 3) {
+    h += '<div class="fam-pair-mid"><b>去伤害化</b>已软化</div>';
+  } else {
+    h += '<div class="fam-pair-mid"><b>去伤害化</b>—</div>';
+  }
+  if (trans && !red) {
+    h += '<div class="fam-pair-trans"><b class="fam-tag fam-tag--trans">换位表达·非原话</b>' + famEsc(trans) + '</div>';
+  } else {
+    h += '<div class="fam-pair-trans"><b class="fam-tag fam-tag--trans">换位表达·非原话</b>译文生成中…</div>';
+  }
+  h += '</div>';
+  h += '<div class="fam-pair-note">左：原话 · 中：去伤害化 · 右：换位后（给' + famEsc(famOtherLabel()) + '看的不是原话）</div>';
+  return h;
+}
+
+/* 情绪刻度条：缺 intensity/hurt 字段则整条不画（降级，不编造分数） */
+function famScaleBlock(em){
+  if (!em) return '';
+  var h = '';
+  if (em.intensity != null) h += famScale('激烈度', em.intensity, 5, 'intensity', famIntensityLabel(em.intensity));
+  if (em.hurt != null) h += famScale('伤人度', em.hurt, 5, 'hurt', famHurtLabel(em.hurt));
+  return h;
+}
+function famIntensityLabel(v){ return (v <= 1) ? '平静' : (v <= 3) ? '偏激' : '激烈'; }
+function famHurtLabel(v){ return (v <= 1) ? '对事' : (v <= 3) ? '偏对人' : '很伤人'; }
+function famScale(label, value, max, kind, level){
+  var v = famNum(value);
+  var filled = Math.max(0, Math.min(max, v));
+  var ticks = '';
+  for (var i = 0; i < max; i++) {
+    ticks += '<span class="fam-scale-tick' + (i < filled ? ' fam-scale-fill' : '') + '"></span>';
+  }
+  return '<div class="fam-scale fam-scale--' + kind + '" data-value="' + v + '">' +
+    '<span class="fam-scale-label">' + famEsc(label) + ' ' + v + '/' + max + ' ' + famEsc(level) + '</span>' +
+    '<span class="fam-scale-ticks">' + ticks + '</span></div>';
+}
+
+/* 置信度点阵：缺 confidence 字段则不显示（降级，不编造） */
+function famConfDotsBlock(em){
+  if (!em || em.confidence == null) return '';
+  var c = Number(em.confidence);
+  var level, on;
+  if (c >= 0.80) { level = '高'; on = 4; }
+  else if (c >= 0.50) { level = '中'; on = 3; }
+  else { level = '低'; on = 2; }
+  var dots = '';
+  for (var i = 0; i < 5; i++) dots += (i < on) ? '<span class="on">●</span>' : '<span class="off">○</span>';
+  return '<div class="fam-conf-dots" data-value="' + c.toFixed(2) + '">' + dots + '<span class="fam-conf-level">' + level + '</span></div>';
+}
+
+/* 徽章：去伤害化（hurt≥3）/ 激烈 / 低置信；status 空按 done 处理但隐藏徽章 */
+function famBadges(em){
+  if (!em) return '';
+  var h = '';
+  if (em.hurt >= 3 && !em.red_line) h += '<span class="fam-badge fam-badge--dehurt">已去伤害化 · 对人的话已转成对事的担心</span>';
+  if (em.intensity >= 4) h += '<span class="fam-badge fam-badge--intense">情绪激烈 · 已先降温</span>';
+  var ss = em.signal_status || 'done';
+  if (ss === 'low_confidence') h += '<span class="fam-badge fam-badge--lowconf">系统把握一般，建议当面再确认一遍</span>';
+  return h;
+}
+
+/* 红线转介卡：宁静青边；卡内不得出现 .fam-pair-trans；含可配置求助资源位 */
+function famSafeCard(m){
+  return '<div class="fam-safe-card">' +
+    '<b>这条消息触发了安全保护，我们没有生成换位译文</b><br/>' +
+    '我们优先关心当事人的安全。这类内容不适合做语气改写，请优先寻求专业支持：' +
+    '<div class="fam-safe-res" data-slot="help-resources">' +
+      '<ul>' +
+        '<li>全国24小时心理援助热线 12356</li>' +
+        '<li>全国青少年服务热线 12355</li>' +
+      '</ul>' +
+    '</div>' +
+    '<button class="btn btn--ghost" data-action="fam-report" data-id="' + famEsc(m.id || '') + '">举报</button>' +
+    '<button class="btn btn--ghost" data-action="fam-fold" data-id="' + famEsc(m.id || '') + '">查看原话</button>' +
+  '</div>';
+}
+
+/* 分歧泳道桥（家长端下钻）：双泳道对开 + 三档拨杆 + 强制字段（沿用 fam-veto-* 类，AC11 依赖） */
+function famRenderLanes(){
+  var items = FAM.items || [];
+  var h = '<div class="fam-graph">';
+  if (!items.length) {
+    h += '<div class="fam-graph-empty">暂无分歧项。你们的志愿表还没有差异，先用下面的「双志愿表对比」看看，或者写几句你的担心。</div>';
+    h += '</div>';
+    return h;
+  }
+  for (var i = 0; i < items.length; i++) h += famLaneItemHTML(items[i]);
+  h += '</div>';
+  return h;
+}
+function famLaneItemHTML(it){
+  var id = String(it.item_id);
+  var picked = FAM.stancePick[id] || (it.my_stance && it.my_stance.stance) || '';
+  var mine = it.my_stance || {};
+  var err = FAM.stanceError[id] || '';
+  var draft = FAM.stanceDraft[id] || null;
+  var reasonVal = draft ? draft.reason : (mine.reason || '');
+  var subVal = draft ? draft.sub : (picked === 'negotiable' ? (mine.condition || '') : (mine.substitute || ''));
+  var noVal = draft ? draft.noSub : !!mine.no_substitute;
+  var axisLabel = it.axis_label || it.label || it.ref_key || ('项 ' + id);
+  var stName = (it.status === 'settled') ? 'ok' : (it.status === 'deferred') ? 'stop' : 'warn';
+  var stText = (it.status === 'settled') ? '一致·已定' : (it.status === 'deferred') ? '底线·待决' : '协商中';
+  var h = '<div class="fam-lane fam-stance-item" data-item="' + famEsc(id) + '">';
+  h += '<div class="fam-lane-head"><span class="fam-stance-name">' + famEsc(axisLabel) + '</span>' +
+       '<span class="fam-bridge-axis" data-state="' + stName + '">' + famEsc(stText) + '</span></div>';
+  h += '<div class="fam-lane-side fam-lane-side--left"><div class="fam-lane-node fam-lane-node--mine">' + famEsc(mine.need_label || (famIsStudent() ? '我的想法' : '我的担心') || '—') + '</div></div>';
+  h += '<div class="fam-lane-bridge fam-lane-bridge--' + stName + '" data-state="' + stName + '"><span class="fam-bridge-axis">' + famEsc(axisLabel) + '</span>分歧桥</div>';
+  h += '<div class="fam-lane-side fam-lane-side--right"><div class="fam-lane-node fam-lane-node--other">' + famEsc(it.other_need_label || '—') + '</div></div>';
+  /* 三档拨杆（替代三按钮；语义/动作名不变） */
+  h += '<div class="fam-dial">';
+  for (var i = 0; i < FAM_STANCE_OPTS.length; i++) {
+    var o = FAM_STANCE_OPTS[i];
+    var on = (picked === o.code) ? ' fam-dial-seg--on' : '';
+    h += '<button class="fam-dial-seg' + on + ' fam-dial-seg--' + o.code + '" data-action="fam-stance-set" data-item="' + famEsc(id) + '" data-stance="' + o.code + '" aria-pressed="' + (picked === o.code ? 'true' : 'false') + '"><b>' + o.label + '</b><span>' + o.hint + '</span></button>';
+  }
+  h += '</div>';
+  /* 强制字段区（沿用 fam-veto-*，AC11 依赖 .fam-veto-reason 与边框 --fam-c-stop） */
+  if (picked === 'veto') {
+    h += '<div class="fam-veto-fields">' +
+      '<label class="fam-veto-label">因为什么？（至少 8 字）<textarea class="fam-veto-reason' + (err ? ' fam-veto-reason--err' : '') + '" placeholder="例：这个专业本科毕业很难找到对口工作，我担心四年后没着落">' + famEsc(reasonVal) + '</textarea></label>' +
+      '<label class="fam-veto-label">除非 / 替代方案（至少 4 字）<textarea class="fam-veto-sub" placeholder="例：除非他能考上研究生，否则我不接受">' + famEsc(subVal) + '</textarea></label>' +
+      '<label class="fam-veto-nosub"><input type="checkbox"' + (noVal ? ' checked' : '') + ' /><span>我确实没有替代方案，只是表达底线</span></label>' +
+    '</div>';
+  } else if (picked === 'negotiable') {
+    h += '<div class="fam-veto-fields"><label class="fam-veto-label">有什么条件？（可留空，写了更容易谈成）<textarea class="fam-veto-sub" placeholder="例：会计可以，但必须考研 / 必须在省内">' + famEsc(subVal) + '</textarea></label></div>';
+  }
+  if (err) h += '<div class="fam-stance-err">' + famEsc(err) + '</div>';
+  h += '<div class="fam-stance-actions"><button class="btn btn--brand" data-action="fam-stance-submit" data-item="' + famEsc(id) + '"' + (err ? ' disabled' : '') + '>提交这项态度</button>';
+  h += (mine.stance ? '<span class="fam-stance-mine">已表态：' + famEsc(FAM_STANCE_LABEL[mine.stance] || '') + '</span>' : '') + '</div>';
+  h += '</div>';
+  return h;
+}
+
+/* 共识子页：复用收敛环 + 5 轴色带 + 账本 + 终局声明 */
+function famRenderConsensus(){
+  var pg = FAM.progress || { total: 0, settled: 0, pending: 0, deferred: 0 };
+  var total = famNum(pg.total), settled = famNum(pg.settled), deferred = famNum(pg.deferred);
+  var pct = (total > 0) ? (settled / total) : 0;
+  var h = '<div class="fam-graph"><div class="fam-overview">';
+  h += '<div class="fam-overview-top">' + famRenderRing(pct, settled, total) +
+       '<div class="fam-overview-meta"><b>' + settled + ' / ' + total + ' 已定</b><span>待决 ' + deferred + ' · 未表态 ' + famNum(pg.pending) + '</span></div></div>';
+  h += famRenderAxisbar();
+  h += famRenderLedger();
+  h += '<div class="fam-final-note">家庭内部记录，非法律协议</div>';
+  h += '</div></div>';
+  return h;
+}
+
+/* 我的志愿表子页 */
+function famRenderMineGraph(){
+  var list = FAM.volunteers || [];
+  var h = '<div class="fam-graph"><div class="fam-mine">';
+  h += '<div class="fam-mine-head"><b>我的志愿表</b><span class="fam-mine-sub">' + famEsc(famIsStudent() ? '我自己看上的' : '我希望的') + '</span></div>';
+  if (!list.length) {
+    h += '<div class="fam-mine-empty">' + famEsc(famIsStudent()
+      ? '还没有志愿想法——去「找学校 / 找专业」加几所，这里会自动出现。'
+      : '你还没有添加想法。可以先写下你的意见，再逐项表态。') + '</div>';
+  } else {
+    h += '<div class="fam-mine-list">';
+    for (var i = 0; i < list.length; i++) {
+      var v = list[i];
+      h += '<span class="fam-mine-item"><i>' + famEsc(v.kind === 'college' ? '院校' : '专业') + '</i>' + famEsc(v.name || ('#' + v.ref_id)) + '</span>';
+    }
+    h += '</div>';
+    if (FAM.progress) {
+      var waiting = famNum(FAM.progress.total) - famNum(FAM.progress.settled) - famNum(FAM.progress.deferred);
+      h += '<div class="fam-mine-diff">与' + famEsc(famIsStudent() ? '爸妈' : '孩子') + '的分歧项：<b>' + famNum(FAM.progress.total) + '</b> 项（已定 <b>' + famNum(FAM.progress.settled) + '</b> · 待决 <b>' + famNum(FAM.progress.deferred) + '</b> · 未表态 <b>' + Math.max(0, waiting) + '</b>）</div>';
+    }
+  }
+  h += '</div></div>';
+  return h;
+}
+
+/* ★ 子页签切换：本地状态切换（不新增第二个 click 监听，仍走 #app 委托） */
+if (typeof Controller !== 'undefined') {
+  Controller.famSubtab = function(tab){
+    if (!tab) return;
+    FAM.subtab = tab;
+    famRenderShell();
+  };
+  /* ★ 退出家庭：移除 fam-standalone 并回到进入前的页面；FAM.* 内存与持久化一律不动 */
+  Controller.famExit = function(){
+    document.body.classList.remove('fam-standalone');
+    FAM.subtab = '';
+    var back = (typeof State !== 'undefined' && State.nav) ? State.nav : (FAM.prevNav || 'home');
+    UI.switchView(back);
+  };
+}

@@ -20,7 +20,7 @@ const path = require('path');
 
 const DIR = __dirname;
 const ROOT = path.resolve(DIR, '..');
-const HTML_PATH = process.argv[2] || path.join(ROOT, 'index.html');
+const HTML_PATH = process.env.GKZY_HTML || path.join(DIR, '..', 'index.html');
 const CSS_PATH = path.join(DIR, 'app.css');
 const JS_PATH = path.join(DIR, 'app.js');
 
@@ -113,6 +113,8 @@ const CASES_BLOCK =
       "      case 'fam-cmp-run':       Controller.famCmpRun(); break;\n" +
       "      case 'fam-retry':         Controller.famRetry(); break;\n" +
       "      case 'fam-switch-role':   Controller.famSwitchRole(); break;\n" +
+      "      case 'fam-exit':         Controller.famExit(); break;\n" +
+      "      case 'fam-subtab':       Controller.famSubtab(el.getAttribute('data-tab')); break;\n" +
       "      case 'fam-stance-set':    Controller.famStanceSet(el.getAttribute('data-item'), el.getAttribute('data-stance')); break;\n" +
       "      case 'fam-stance-submit': Controller.famStanceSubmit(el.getAttribute('data-item')); break;\n" +
       '      /* D-DOMAIN-CASES-END */';

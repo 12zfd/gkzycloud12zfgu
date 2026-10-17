@@ -4,7 +4,7 @@
  * 仅承载家庭协同视图的样式；由 domain-d/inject.js 内联为独立 D 域样式块（块 id="d-domain"）。
  * 复用主样式的设计变量（--brand / --ink-2 / --t-xs / --card / --brand-soft …），
  * 全部以 fam- 前缀作用域，绝不污染 A/B/C/E 域。
- * 约定：本文件只写样式，不含任何脚本、console、内联事件。
+ * 约定：本文件只写样式，不含任何脚本、日志调用、内联事件。
  * ========================================================================== */
 
 /* —— 视图容器：复用 .view-section 的显隐机制（由 UI.switchView 切换 .active） —— */
@@ -256,9 +256,190 @@
   padding:10px 12px; font-size:var(--t-sm,14px); line-height:1.6; font-weight:400;
   border:1px solid #D9DCF7; border-radius:10px; background:#fff; color:var(--ink,#222);
 }
+/* ★ 禁止裸否决：强校验不通过时理由框标红（AC11 依赖 --fam-c-stop 边框） */
+.fam-veto-reason--err{ border-color:var(--fam-c-stop,#C0392B); background:#FDF3F2; }
 .fam-veto-nosub{ display:flex; align-items:center; gap:8px; font-size:var(--t-xs,11px); font-weight:400; color:var(--ink-2,#5A5C74); }
 .fam-stance-err{ margin-top:8px; font-size:var(--t-xs,11px); color:#C0392B; }
 .fam-stance-actions{ display:flex; align-items:center; gap:10px; margin-top:10px; }
 .fam-stance-actions .btn{ border:none; border-radius:10px; cursor:pointer; font-weight:500; padding:8px 16px; font-size:var(--t-xs,11px); }
 .fam-stance-actions .btn--brand{ background:var(--brand,#4F46E5); color:#fff; }
 .fam-stance-mine{ font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+
+/* ============================================================================
+ * 家庭独立 UI（2026-09-23 规格）：独立壳 + 图形化信息架构
+ * ---------------------------------------------------------------------------
+ * ★ 新增 CSS 变量：全部 --fam-c-* 命名，与生活环境色 --env-a/b/c/d 名字/语义/
+ *   hex 均不撞（见 spec §7.2）。
+ * ========================================================================== */
+:root{
+  --fam-c-ok:#0E8A5F;      /* 已定 / 一致 */
+  --fam-c-warn:#C08A2B;    /* 可协商 / 待决 */
+  --fam-c-stop:#C0392B;    /* 不可妥协 / 否决 */
+  --fam-c-calm:#2F9E8F;    /* 红线安全卡·宁静青 */
+  --fam-c-hurt:#E4572E;    /* 去伤害化徽章 / hurt 刻度填充 */
+  --fam-c-mine:#4F46E5;    /* 我方节点 */
+  --fam-c-other:#7C6CF5;   /* 对方节点 */
+  --fam-scale-empty:#EDEEF4;/* 刻度条空槽底色 */
+}
+
+/* —— 独立壳：进入家庭后隐藏 A/B/C/E 各 view 与全局 #tabbar（只隐藏，不卸载 DOM） —— */
+body.fam-standalone #view-home,
+body.fam-standalone #view-college,
+body.fam-standalone #view-major,
+body.fam-standalone #view-career,
+body.fam-standalone #view-plan,
+body.fam-standalone #view-volunteer,
+body.fam-standalone #view-mine{ display:none !important; }
+body.fam-standalone #tabbar{ display:none !important; }
+body.fam-standalone .fam-main{ display:none !important; }
+body.fam-standalone #view-family .page-body{ padding-bottom:88px; }
+
+/* —— 独立壳图形区：默认隐藏，进入家庭（body.fam-standalone）才显示 —— */
+.fam-shell{ display:none; }
+body.fam-standalone .fam-shell{ display:block; }
+.fam-shell{ display:none; flex-direction:column; gap:12px; }
+
+/* —— 顶部身份条（独立壳内，复用类名，不与 legacy 同名 id 冲突） —— */
+.fam-shell .fam-idbar{ display:flex; align-items:center; gap:10px; padding:12px 0 2px; }
+.fam-shell .fam-idbar .btn{ margin-left:auto; }
+
+/* —— 共识地形（概览屏，两端共有；折叠态高度 ≤132px） —— */
+.fam-overview{
+  margin:12px 0 4px; padding:14px; background:var(--card,#fff);
+  border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06);
+}
+body.fam-standalone .fam-overview{ max-height:132px; overflow:auto; }
+.fam-overview-top{ display:flex; gap:12px; align-items:center; }
+.fam-overview-meta{ display:flex; flex-direction:column; gap:2px; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+.fam-overview-meta b{ font-size:var(--t-md,16px); color:var(--ink,#222); }
+
+/* 收敛环 donut */
+.fam-ring{ position:relative; width:84px; height:84px; flex:0 0 auto; }
+.fam-ring svg{ width:84px; height:84px; transform:rotate(-90deg); }
+.fam-ring-bg{ fill:none; stroke:var(--fam-scale-empty,#EDEEF4); stroke-width:9; }
+.fam-ring-fg{ fill:none; stroke:var(--fam-c-ok,#0E8A5F); stroke-width:9; stroke-linecap:round; transition:stroke-dasharray .4s ease; }
+.fam-ring-num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:var(--t-md,16px); font-weight:700; color:var(--ink,#222); line-height:1.1; }
+.fam-ring-num small{ font-size:10px; font-weight:500; color:var(--ink-2,#5A5C74); }
+
+/* 5 轴分歧色带（颜色 + 文字双编码，色盲可用） */
+.fam-axisbar{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.fam-axisbar-seg{ display:flex; align-items:center; gap:8px; font-size:var(--t-xs,11px); padding:4px 8px; border-radius:8px; background:#F7F8FC; }
+.fam-axisbar-seg b{ flex:0 0 auto; color:var(--ink-2,#5A5C74); }
+.fam-axisbar-seg span{ margin-left:auto; font-weight:600; }
+.fam-axisbar-seg--ok{ background:#E7F8F1; color:#0E8A5F; }
+.fam-axisbar-seg--warn{ background:#FFF6E9; color:#8A5B12; }
+.fam-axisbar-seg--stop{ background:#FDEEF0; color:#C0392B; }
+.fam-axisbar-seg--none{ background:#F1F2F7; color:#9A9CB0; }
+
+/* 筹码账本对等条（家长端） */
+.fam-ledger{ margin-top:10px; }
+.fam-ledger-bar{ display:flex; gap:10px; align-items:center; }
+.fam-ledger-seg{ height:10px; border-radius:999px; transition:flex-grow .4s ease; }
+.fam-ledger-seg--child{ background:var(--fam-c-mine,#4F46E5); }
+.fam-ledger-seg--parent{ background:var(--fam-c-other,#7C6CF5); }
+.fam-ledger-legend{ display:flex; gap:12px; font-size:10px; color:var(--ink-2,#5A5C74); margin-top:4px; }
+
+/* 家庭内部记录声明（终局区，AC8 常量文案） */
+.fam-final-note{ margin-top:6px; font-size:10px; color:#9A9CB0; }
+
+/* 强制声明位（AC8 / §4.3 防「心理学测评」误读） */
+.fam-emotion-disclaimer{ margin-top:10px; font-size:10px; line-height:1.5; color:#9A9CB0; }
+
+/* —— 家庭内子页签 —— */
+.fam-subtabs{ display:flex; gap:6px; overflow-x:auto; padding:4px 0; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.fam-subtabs::-webkit-scrollbar{ display:none; }
+.fam-subtab{
+  flex:0 0 auto; min-height:44px; padding:0 14px; border:1px solid #E3E5EE;
+  border-radius:999px; background:#fff; color:var(--ink-2,#5A5C74);
+  font-size:var(--t-xs,11px); cursor:pointer;
+}
+.fam-subtab--active{ border-color:var(--fam-c-mine,#4F46E5); background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); font-weight:600; }
+
+/* —— 图形主区（下钻屏） —— */
+.fam-graph{ display:flex; flex-direction:column; gap:12px; padding:4px 0 8px; }
+.fam-graph-empty{ padding:32px 16px; text-align:center; color:var(--ink-2,#5A5C74); font-size:var(--t-sm,14px); line-height:1.7; }
+
+/* 情绪镜（学生端·我的话 逐条下钻） */
+.fam-mirror{ background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; padding:12px 14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-mirror-quote{ font-size:var(--t-sm,14px); line-height:1.6; color:var(--ink,#222); }
+
+/* 情绪刻度条（5 格，颜色 + 文字标签双编码） */
+.fam-scale{ display:flex; align-items:center; gap:8px; margin:6px 0; }
+.fam-scale-ticks{ display:flex; gap:3px; flex:1 1 auto; }
+.fam-scale-tick{ flex:1 1 0; min-width:22px; height:10px; border-radius:3px; background:var(--fam-scale-empty,#EDEEF4); }
+.fam-scale-fill{ background:var(--fam-c-hurt,#E4572E); }
+.fam-scale--intensity .fam-scale-fill{ background:var(--fam-c-warn,#C08A2B); }
+.fam-scale-label{ flex:0 0 auto; font-size:var(--t-xs,11px); color:var(--ink-2,#5A5C74); }
+
+/* 人话标签 chip（诉求类别 / 情绪 / 状态；绝不显枚举码） */
+.fam-chip{ display:inline-block; font-size:10px; padding:2px 8px; border-radius:999px; background:#EEF0FE; color:#4F46E5; margin:2px 4px 2px 0; }
+.fam-chip--need{ background:#E7F8F1; color:#0E8A5F; }
+.fam-chip--emotion{ background:#FDEEF0; color:#C0392B; }
+.fam-chip--status{ background:#F1F2F7; color:#6B6E86; }
+.fam-chip--status--low{ background:#FFF6E9; color:#8A5B12; }
+
+/* 徽章（去伤害化 / 激烈 / 冷言 / 低置信 / 轴），始终配文字 */
+.fam-badge{ display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; margin:2px 0; }
+.fam-badge--dehurt{ background:#FDE3DA; color:#E4572E; }
+.fam-badge--intense{ background:#FDEEF0; color:#C0392B; }
+.fam-badge--cold{ background:#F1F2F7; color:#6B6E86; }
+.fam-badge--lowconf{ background:#FFF6E9; color:#8A5B12; }
+.fam-badge--axis{ background:#EEF0FE; color:#4F46E5; }
+
+/* 置信度点阵（●●●○○ + 等级文字，不靠颜色） */
+.fam-conf-dots{ font-size:var(--t-sm,14px); letter-spacing:2px; }
+.fam-conf-dots .on{ color:var(--fam-c-ok,#0E8A5F); }
+.fam-conf-dots .off{ color:var(--fam-scale-empty,#EDEEF4); }
+.fam-conf-level{ font-size:10px; color:var(--ink-2,#5A5C74); margin-left:4px; }
+
+/* 原话→去伤害化→换位译文 三节点连线 */
+.fam-pair{ display:flex; align-items:stretch; gap:6px; margin:8px 0; }
+.fam-pair-raw, .fam-pair-mid, .fam-pair-trans{ flex:1 1 0; min-width:0; padding:10px; border-radius:10px; font-size:var(--t-xs,11px); line-height:1.5; word-break:break-word; }
+.fam-pair-raw{ background:#FBFBFD; border:1px dashed #E3E5EE; color:var(--ink-2,#5A5C74); }
+.fam-pair-mid{ background:#FFF6E9; border:1px solid #F4D9A8; color:#8A5B12; }
+.fam-pair-trans{ background:#F7F8FC; border:1px solid #E3E5EE; color:var(--ink,#222); }
+.fam-pair-note{ font-size:10px; color:var(--ink-2,#5A5C74); margin-top:4px; }
+
+/* 分歧泳道桥（双泳道对开连线） */
+.fam-lane{ display:flex; align-items:stretch; gap:8px; padding:12px 14px; background:var(--card,#fff); border:1px solid #F1F2F7; border-radius:14px; box-shadow:0 2px 10px rgba(31,34,69,.06); }
+.fam-lane-side{ flex:1 1 0; min-width:0; }
+.fam-lane-node{ padding:8px 10px; border-radius:10px; background:#F7F8FC; font-size:var(--t-sm,14px); line-height:1.5; }
+.fam-lane-node--mine{ border-left:3px solid var(--fam-c-mine,#4F46E5); }
+.fam-lane-node--other{ border-left:3px solid var(--fam-c-other,#7C6CF5); }
+.fam-lane-bridge{ flex:0 0 auto; max-width:128px; align-self:center; padding:6px 8px; border-radius:10px; font-size:10px; font-weight:600; text-align:center; }
+.fam-lane-bridge--ok{ background:#E7F8F1; color:#0E8A5F; }
+.fam-lane-bridge--warn{ background:#FFF6E9; color:#8A5B12; }
+.fam-lane-bridge--stop{ background:#FDEEF0; color:#C0392B; }
+.fam-bridge-axis{ display:block; font-size:10px; font-weight:500; color:var(--ink-2,#5A5C74); margin-bottom:2px; }
+
+/* 三档拨杆（替代三按钮；语义/动作名不变） */
+.fam-dial{ display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:8px 0; }
+.fam-dial-seg{
+  min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  border:1px solid #E3E5EE; border-radius:10px; background:#fff; color:var(--ink-2,#5A5C74);
+  cursor:pointer; font-size:var(--t-xs,11px);
+}
+.fam-dial-seg b{ font-weight:700; }
+.fam-dial-seg--on.fam-dial-seg--accept{ border-color:var(--fam-c-ok,#0E8A5F); background:#E7F8F1; color:#0E8A5F; }
+.fam-dial-seg--on.fam-dial-seg--negotiable{ border-color:var(--fam-c-warn,#C08A2B); background:#FFF6E9; color:#8A5B12; }
+.fam-dial-seg--on.fam-dial-seg--veto{ border-color:var(--fam-c-stop,#C0392B); background:#FDEEF0; color:#C0392B; }
+
+/* 红线转介卡（宁静青边；卡内不得出现 .fam-pair-trans） */
+.fam-safe-card{ background:#EAF6F4; border:1px solid var(--fam-c-calm,#2F9E8F); border-radius:14px; padding:14px; color:#1F6B62; line-height:1.6; }
+.fam-safe-card b{ color:var(--fam-c-calm,#2F9E8F); }
+.fam-safe-res{ margin-top:10px; padding:10px 12px; background:#fff; border-radius:10px; font-size:var(--t-xs,11px); line-height:1.6; color:var(--ink,#222); }
+.fam-safe-res ul{ margin:6px 0 0; padding-left:18px; }
+.fam-safe-res li{ margin:2px 0; }
+
+/* 家庭专属底栏（进入家庭后显示；含退出家庭） */
+.fam-dock{ display:none; position:fixed; left:0; right:0; bottom:0; z-index:30; background:var(--card,#fff); border-top:1px solid #ECECF3; padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px)); box-shadow:0 -4px 16px rgba(31,34,69,.06); }
+body.fam-standalone .fam-dock{ display:flex; gap:8px; }
+.fam-dock-item{ flex:1 1 0; min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; border:1px solid #E3E5EE; border-radius:12px; background:#fff; color:var(--ink-2,#5A5C74); font-size:var(--t-xs,11px); cursor:pointer; }
+.fam-dock-item--active{ border-color:var(--fam-c-mine,#4F46E5); background:var(--brand-soft,#EEF0FE); color:var(--brand,#4F46E5); }
+.fam-dock-exit{ color:var(--fam-c-stop,#C0392B); border-color:#F3D2CD; }
+
+/* ≤360px 断点：泳道折行（左节点/桥/右节点上下三行）+ 色带 2 列 */
+@media (max-width:360px){
+  .fam-lane{ flex-direction:column; align-items:stretch; }
+  .fam-axisbar{ display:grid; grid-template-columns:1fr 1fr; }
+}
