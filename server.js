@@ -823,6 +823,9 @@ app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.ht
 /* 6.8.1 D 域（家庭协同）—— 只增式挂载：位于既有 /api 路由之后、catch-all 404 之前 */
 app.use('/api', require('./routes-d'));
 
+/* 6.8.2 B 域（用户登录/会话）—— 只增式挂载：位于 routes-d 之后、catch-all 404 之前 */
+app.use('/api', require('./routes-auth'));
+
 /* 6.9 未匹配的 /api/* 一律返回 JSON（不要返回 HTML，否则前端解析会莫名其妙失败） */
 app.use('/api', (req, res) => fail(res, 404, '接口不存在：' + req.method + ' ' + req.originalUrl));
 

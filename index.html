@@ -591,6 +591,59 @@ html.no-fa .fa-regular::before{ content:"\25CF"; opacity:.35; }
   *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
 }
 
+/* ===== 用户登录覆盖层（B 域·用户） ===== */
+.auth-layer{
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(160deg, rgba(79,70,229,.12), rgba(79,70,229,.04));
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  padding:20px;
+}
+.auth-layer.is-hidden{ display:none !important; }
+.auth-card{
+  width:100%; max-width:360px;
+  background:var(--card,#FFFFFF);
+  border-radius:20px;
+  box-shadow:0 20px 60px rgba(23,24,38,.22);
+  padding:28px 24px 22px;
+  display:flex; flex-direction:column; align-items:stretch;
+  text-align:center;
+}
+.auth-brand{
+  font-size:30px; font-weight:800; letter-spacing:2px;
+  color:var(--brand,#4F46E5);
+}
+.auth-tagline{
+  margin-top:6px; margin-bottom:20px;
+  font-size:13px; color:#6B7280; line-height:1.5;
+}
+.auth-form{ display:flex; flex-direction:column; gap:12px; margin-bottom:16px; }
+.auth-field{ display:flex; flex-direction:column; gap:6px; text-align:left; }
+.auth-label{ font-size:13px; color:#374151; font-weight:600; }
+.auth-input{
+  height:44px; padding:0 14px;
+  border:1px solid #E5E7EB; border-radius:12px;
+  font-size:15px; color:#111827; background:#F9FAFB;
+  outline:none; transition:border-color .15s, box-shadow .15s;
+}
+.auth-input:focus{ border-color:var(--brand,#4F46E5); box-shadow:0 0 0 3px rgba(79,70,229,.12); background:#fff; }
+.auth-btn{
+  height:46px; border:none; border-radius:12px;
+  font-size:16px; font-weight:700; cursor:pointer;
+  margin-bottom:10px; transition:opacity .15s, transform .05s;
+}
+.auth-btn:active{ transform:scale(.99); }
+.auth-btn-primary{ background:var(--brand,#4F46E5); color:#fff; }
+.auth-btn-primary:hover{ opacity:.92; }
+.auth-btn-ghost{ background:#EEF0FE; color:var(--brand,#4F46E5); margin-bottom:0; }
+.auth-btn-ghost:hover{ background:#E3E6FD; }
+.auth-note{ margin:12px 0 4px; font-size:12px; color:#9CA3AF; }
+.auth-skip{
+  margin-top:10px; background:none; border:none; cursor:pointer;
+  font-size:13px; color:#9CA3AF; text-decoration:underline;
+}
+.auth-skip:hover{ color:#6B7280; }
+
 </style>
 <style id="d-domain">/* ============================================================================
  * domain-d/app.css —— D 域（家庭协同）样式源文件
@@ -1240,6 +1293,11 @@ html.no-fa .fa-regular::before{ content:"\25CF"; opacity:.35; }
         <span class="mt" data-page-node-id="qBywmZ5W99P51kESZXPRKy">意见反馈</span>
         <i class="fa-solid fa-chevron-right mchev" data-page-node-id="OCesXjczfgFe2Iu9adELFK"></i>
       </div>
+      <div class="mine-row" id="mine-logout-row" data-action="auth-logout" hidden>
+        <span class="mi" style="background:#FDECEC;color:#EF4444"><i class="fa-solid fa-right-from-bracket"></i></span>
+        <span class="mt">退出登录</span>
+        <i class="fa-solid fa-chevron-right mchev"></i>
+      </div>
     </div>
 
     <p style="text-align:center;font-size:var(--t-xs);color:var(--ink-3);margin:14px 0 0" data-page-node-id="QfKdW2zqBowBSBRGftmqFJ">
@@ -1292,6 +1350,31 @@ html.no-fa .fa-regular::before{ content:"\25CF"; opacity:.35; }
     </button>
   </div>
   <div class="sheet-body" id="sheet-body" data-page-node-id="ANl7kocN166jj3TjdT1FBJ"></div>
+</div>
+
+<!-- =========================================================================
+     用户登录覆盖层（B 域·用户）—— 仅在未登录且未选择「暂不登录」时显示。
+     hidden 属性在 Controller.init() 中被统一转成 is-hidden 类（见下方逻辑）。
+     ========================================================================= -->
+<div class="auth-layer" id="auth-layer" hidden>
+  <div class="auth-card">
+    <div class="auth-brand">智愿</div>
+    <div class="auth-tagline">高考志愿填报 · 一人一档，数据有家</div>
+    <div class="auth-form">
+      <label class="auth-field">
+        <span class="auth-label">账号</span>
+        <input class="auth-input" id="auth-username" type="text" autocomplete="username" placeholder="请输入账号" />
+      </label>
+      <label class="auth-field">
+        <span class="auth-label">密码</span>
+        <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" placeholder="请输入密码" />
+      </label>
+    </div>
+    <button class="auth-btn auth-btn-primary" data-action="auth-login">登录</button>
+    <button class="auth-btn auth-btn-ghost" data-action="auth-demo">一键体验账号</button>
+    <div class="auth-note">体验账号：demo / demo123</div>
+    <button class="auth-skip" data-action="auth-skip">暂不登录，先逛逛</button>
+  </div>
 </div>
 
 <!-- 全局 Toast -->
@@ -3925,6 +4008,8 @@ const UI = {
     if (sw) sw.classList.toggle('on', !!State.isElder);
     const app = Utils.$('app');
     if (app) app.classList.toggle('elder', !!State.isElder);
+    // 我的页「退出登录」行按登录态显隐
+    Controller.renderAuthRow();
   },
 
   /* ---------------- 跨视图同步 ---------------- */
@@ -5138,6 +5223,10 @@ const Controller = {
 
     // 9) 拖拽初始化：放在初始化阶段，且全生命周期只执行一次
     Controller.initSortable();
+
+    // 10) 用户登录态引导（B 域·用户）：有 token 静默校验；无 token 且未跳过 → 显示登录层；
+    //     服务未就绪时前端游客模式降级，绝不白屏。
+    Controller.initAuth();
   },
 
   /* ==================================================================
@@ -5454,8 +5543,147 @@ const Controller = {
       case 'wipe-favorites':   Controller.wipeFavorites(); break;
       case 'wipe-all':         Controller.wipeAll(); break;
 
+      /* --- 用户登录（B 域·用户）：登录 / 一键体验 / 暂不登录 / 退出 --- */
+      case 'auth-login':   Controller.authLogin(); break;
+      case 'auth-demo':    Controller.authDemo(); break;
+      case 'auth-skip':    Controller.authSkip(); break;
+      case 'auth-logout':  Controller.authLogout(); break;
+
       default: break;
     }
+  },
+
+  /* ------------------------------------------------------------------
+     用户登录 / 会话（B 域·用户）
+     约定：token 存 localStorage[zy_auth_token]，user 存 [zy_auth_user]，
+           跳过登录标记存 [zy_auth_skipped]；密码永不明文留存。
+     ------------------------------------------------------------------ */
+  _authToken(){ try { return localStorage.getItem('zy_auth_token') || ''; } catch(e){ return ''; } },
+  _authUser(){ try { return JSON.parse(localStorage.getItem('zy_auth_user') || 'null'); } catch(e){ return null; } },
+  _authSet(token, user){
+    try {
+      if (token) localStorage.setItem('zy_auth_token', token);
+      if (user) localStorage.setItem('zy_auth_user', JSON.stringify(user));
+    } catch(e){}
+  },
+  _authClear(){
+    try {
+      localStorage.removeItem('zy_auth_token');
+      localStorage.removeItem('zy_auth_user');
+    } catch(e){}
+  },
+
+  /** 显示 / 隐藏登录覆盖层（统一走 is-hidden，避免内联 display 覆盖） */
+  showAuthLayer(){ const el = Utils.$('auth-layer'); if (el) el.classList.remove('is-hidden'); },
+  hideAuthLayer(){ const el = Utils.$('auth-layer'); if (el) el.classList.add('is-hidden'); },
+
+  /** 启动期调用：有 token → 静默校验；无 token 且未跳过 → 显示登录层（非阻塞、失败静默） */
+  initAuth(){
+    // 我的页「退出登录」行按 token 存在与否显隐
+    Controller.renderAuthRow();
+
+    const token = Controller._authToken();
+    if (token) {
+      // 静默校验：失败不弹错、直接清 token，不阻塞首屏
+      API.fetchJSON('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+        .then(res => {
+          const user = res && res.data && res.data.user;
+          if (user) { Controller._authSet(token, user); Controller.renderAuthRow(); }
+          else { Controller._authClear(); }
+        })
+        .catch(() => {
+          // 503 / 网络不可达：本地游客降级，不弹窗、不白屏
+          Controller._authClear();
+        });
+      return;
+    }
+    // 无 token：未跳过登录才展示覆盖层
+    let skipped = false;
+    try { skipped = localStorage.getItem('zy_auth_skipped') === '1'; } catch(e){}
+    if (!skipped) Controller.showAuthLayer();
+  },
+
+  /** 登录成功后收尾：存 token/user、隐藏覆盖层、提示、刷新我的页 */
+  _onAuthOk(result){
+    if (!result || !result.token) return;
+    Controller._authSet(result.token, result.user);
+    Controller.hideAuthLayer();
+    const name = (result.user && (result.user.display_name || result.user.username)) || '同学';
+    Utils.showToast('欢迎，' + Utils.escapeHTML(String(name)));
+    Controller.renderAuthRow();
+  },
+
+  authLogin(){
+    const u = Utils.$('auth-username');
+    const p = Utils.$('auth-password');
+    const username = u ? u.value.trim() : '';
+    const password = p ? p.value : '';
+    if (!username || !password) { Utils.showToast('请输入账号和密码'); return; }
+    API.fetchJSON('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+      .then(res => Controller._onAuthOk(res && res.data))
+      .catch(err => {
+        if (Controller._authServiceDown(err)) { Controller._authGuestDegrade(); return; }
+        const msg = (err && err.message) ? err.message : '登录失败，请稍后重试';
+        Utils.showToast(Utils.escapeHTML(String(msg)));
+      });
+  },
+
+  authDemo(){
+    API.fetchJSON('/api/auth/demo', { method: 'POST' })
+      .then(res => Controller._onAuthOk(res && res.data))
+      .catch(err => {
+        if (Controller._authServiceDown(err)) { Controller._authGuestDegrade(); return; }
+        const msg = (err && err.message) ? err.message : '体验登录失败，请稍后重试';
+        Utils.showToast(Utils.escapeHTML(String(msg)));
+      });
+  },
+
+  /** 服务未就绪判定：503（E_SERVICE_WAKING）或网络不可达（fetch 抛 TypeError） */
+  _authServiceDown(err){
+    if (!err) return false;
+    const m = String(err.message || '');
+    if (m.indexOf('503') >= 0 || m.indexOf('E_SERVICE_WAKING') >= 0) return true;
+    return err instanceof TypeError; // 网络层失败（fetch 抛 TypeError）
+  },
+
+  /** 登录服务未就绪时的游客模式降级：隐藏登录层、标记跳过、不白屏 */
+  _authGuestDegrade(){
+    try { localStorage.setItem('zy_auth_skipped', '1'); } catch(e){}
+    Controller.hideAuthLayer();
+    Utils.showToast('登录服务未就绪，已进入游客模式');
+  },
+
+  authSkip(){
+    try { localStorage.setItem('zy_auth_skipped', '1'); } catch(e){}
+    Controller.hideAuthLayer();
+  },
+
+  authLogout(){
+    const token = Controller._authToken();
+    Controller._authClear();
+    try { localStorage.removeItem('zy_auth_skipped'); } catch(e){}
+    Controller.renderAuthRow();
+    Controller.hideAuthLayer();
+    if (token) {
+      API.fetchJSON('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      }).catch(() => {});
+    }
+    Utils.showToast('已退出登录');
+  },
+
+  /** 我的页「退出登录」行：仅当存在 token 时显示 */
+  renderAuthRow(){
+    const row = Utils.$('mine-logout-row');
+    if (!row) return;
+    const hasToken = !!Controller._authToken();
+    row.classList.toggle('is-hidden', !hasToken);
   },
 
   /* ------------------------------------------------------------------
