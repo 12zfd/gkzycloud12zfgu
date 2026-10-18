@@ -43,7 +43,10 @@ global.document = {
   hidden: false,
   getElementById: function(id){ return getEl(id); },
   createElement: function(){ return makeEl('div'); },
-  addEventListener: function(){}
+  addEventListener: function(){},
+  // app.js 自 2026-10-17 起新增 famStanceStash()，会用 querySelectorAll 缓存立场条目；
+  // 桩环境无真实 DOM，返回空数组即可（该路径仅缓存，不影响本测试的 5 类断言）。
+  querySelectorAll: function(){ return []; }
 };
 // 避免测试里真实启动唤醒轮询定时器
 global.setInterval = function(){ return 1; };

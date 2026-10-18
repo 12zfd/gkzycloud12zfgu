@@ -805,12 +805,14 @@ app.delete('/api/volunteers/:kind/:refId', safe((req, res) => {
   res.json({ code: 200, data: { removed: kind + '#' + refId, changes: info.changes, total } });
 }));
 
-/* 6.7 DELETE /api/volunteers/:id —— 按数据库行 id 移除 */
+/* 6.7 DELETE /api/volunteers/:id —— 按数据库行 id 移除（仅限本考生的行，跨考生 403） */
 app.delete('/api/volunteers/:id', safe((req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isInteger(id) || id <= 0) return fail(res, 400, 'id 必须是正整数');
+  const userId = uid(req);
   const row = db.prepare('SELECT * FROM volunteers WHERE id = ?').get(id);
   if (!row) return fail(res, 404, '志愿表里没有 id = ' + id + ' 的记录');
+  if (row.user_id !== userId) return fail(res, 403, '无权删除其他考生的志愿（id = ' + id + '）');
   db.prepare('DELETE FROM volunteers WHERE id = ?').run(id);
   const total = db.prepare('SELECT COUNT(*) AS n FROM volunteers WHERE user_id = ?').get(row.user_id).n;
   res.json({ code: 200, data: { deleted: id, total } });

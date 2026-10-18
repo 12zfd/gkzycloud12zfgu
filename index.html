@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" data-page-node-id="g5sBigyRq56aEdNuNRqlvM">
 <meta name="theme-color" content="#4F46E5" data-page-node-id="rLWBkg9WgRyj8YeRX88l7r">
 <title>智愿 Pro · 高考志愿智能填报</title>
+<link rel="icon" href="data:," /><!-- 2026-10-18：空图标占位，杜绝浏览器自动请求 /favicon.ico 的 404 噪声（本服务未提供图标文件） -->
 
 <!-- 样式与图标均走 CDN；任一不可达都不会导致白屏，见脚本区 bootEngine() 的降级逻辑 -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" data-page-node-id="ZVoHhCBtU4tsAsuc1EuIuR">
@@ -1795,6 +1796,7 @@ const Env = {
     });
     return {
       conclusion, totalGrade, dims: raw, chips: selectedChips,
+      dimTexts,   /* 2026-10-18 修复：已计算但此前漏在 return 里 → 院校详情「生活环境」区块渲染必崩（Cannot read properties of undefined (reading 'dormHardware')） */
       genderRatio: ratio, genderBalance: balance,
       disclaimer: '以上数据为示例口径，非官方公布值，仅供参考。'
     };
@@ -1837,8 +1839,10 @@ const Env = {
     '</div>';
   }
 };
-/* 挂载到 UI：院校详情页（collegeSheetHTML）引用 UI.envBlockHTML(c) */
-UI.envBlockHTML = function(college){ return Env.blockHTML(college); };
+/* 挂载到 UI：院校详情页（collegeSheetHTML）引用 UI.envBlockHTML(c)。
+   2026-10-18 修复：此语句原先在 const UI 声明之前执行 → 命中 TDZ
+   （ReferenceError: Cannot access 'UI' before initialization）→ 整个主脚本块
+   启动即崩、全应用白死。挂载语句已后移至 UI 对象字面量结束之后（Controller 段之前）。 */
 /* 生活环境推导系统（确定性，无 Math.random）
  * 字段说明：
  *   name  : 院校全称（用于 guessType 推断）
@@ -5338,6 +5342,26 @@ const UI = {
     UI.syncScoreViews();
     UI.moveBanner(State.bannerIndex);
   }
+};
+/* 挂载到 UI：院校详情页（collegeSheetHTML）引用 UI.envBlockHTML(c)。
+   （2026-10-18 自 const UI 声明之前移入此处，修复 TDZ 启动崩溃） */
+UI.envBlockHTML = function(college){ return Env.blockHTML(college); };
+/* 高考倒计时自动刷新（跨零点 / 回前台）：60s 轮询 + visibilitychange + focus，
+   文案未变不重绘。属 UI 计时类定时器，不违反「禁 setTimeout 假装业务耗时」纪律。
+   2026-10-18 修复：boot 一直调用本方法，但定义在历次切片中丢失 → 启动即
+   TypeError: UI.startCountdownTicker is not a function。按
+   spec-env-province-countdown-2026-10-13 §1.4 恢复原实现（_cdTimer 守卫防重复注册）。 */
+UI._cdTimer = null; UI._cdLast = '';
+UI.startCountdownTicker = function (){
+  const tick = () => {
+    const c = Utils.gaokaoCountdown();
+    if (c.text !== UI._cdLast) { UI._cdLast = c.text; UI.renderHeroMeta(); }   // 只在文案变化时写 DOM
+  };
+  tick();                                   // 立即校正一次
+  if (UI._cdTimer) clearInterval(UI._cdTimer);
+  UI._cdTimer = setInterval(tick, 60 * 1000); // ① 每 60s 轮询，最迟 1 分钟内跨零点切换
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); }); // ② 回前台立即重算
+  window.addEventListener('focus', tick);  // ③ 窗口重新聚焦重算
 };
 /* =========================================================================
    5. Controller —— 交互逻辑层
