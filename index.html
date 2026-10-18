@@ -8001,14 +8001,15 @@ function famNum(n){ return (n == null ? 0 : n); }
 
 /* 子页签：学生端 我的话/爸妈的话/共识/我的志愿表；家长端 分歧/孩子的话/共识/我的志愿表 */
 function famSubtabDefs(){
-  /* 页签用大白话：学生视角 = 「我说的话 / 爸妈那边 / 商量进度 / 志愿表」 */
-  return famIsStudent()
-    ? [['mine-mirror','我说的话'],['other-pair','爸妈那边'],['consensus','商量进度'],['mine','我的志愿表']]
-    : [['lanes','要商量的事'],['other-pair','孩子那边'],['consensus','商量进度'],['mine','我的志愿表']];
+  /* ★ 只有两个功能页：①写句话（输入想法+我的原话） ②看对方（原话+情绪+换位译文）。整页切换。 */
+  return [
+    ['mine-mirror','写句话'],
+    ['other-pair',(famIsStudent() ? '爸妈的话' : '孩子的话')]
+  ];
 }
-function famDefaultSubtab(){ return famIsStudent() ? 'mine-mirror' : 'lanes'; }
+function famDefaultSubtab(){ return 'mine-mirror'; }
 function famDockMap(){
-  return { 'mine-mirror':'写句话', 'lanes':'要商量', 'other-pair':(famIsStudent()?'爸妈那边':'孩子那边'), 'consensus':'商量进度', 'mine':'志愿表' };
+  return { 'mine-mirror':'写句话', 'other-pair':(famIsStudent()?'爸妈的话':'孩子的话') };
 }
 
 /* 独立壳总渲染：身份条 + 概览 + 子页签 + 下钻 + 底栏（仅家庭态显示） */
@@ -8027,11 +8028,11 @@ function famRenderShell(){
       '</span>' +
       '<button class="btn btn--ghost" data-action="fam-switch-role">切换身份</button>' +
     '</div>';
-  var overview = famRenderOverview();
   var subtabs = famRenderSubtabs();
   var graph = famRenderGraph();
   var dock = famRenderDock();
-  shell.innerHTML = idbar + overview + subtabs + graph + '<div class="fam-dock">' + dock + '</div>';
+  /* ★ 极简两页壳：身份条 + 两个页签 + 当前页 + 底栏（概览环/色带不再默认占屏，保持整洁） */
+  shell.innerHTML = idbar + subtabs + graph + '<div class="fam-dock">' + dock + '</div>';
 }
 
 /* 独立壳底栏（含退出家庭；其余 dock 项用本地子页签切换，避免新增第二个 click 监听） */
@@ -8039,8 +8040,8 @@ function famRenderDock(){
   if (!FAM.role) return '';
   var defs = famSubtabDefs();
   var map = famDockMap();
-  var primary = famIsStudent() ? 'mine-mirror' : 'lanes';
-  var secondary = 'other-pair';
+  var primary = 'mine-mirror';        /* 页1：写句话 */
+  var secondary = 'other-pair';       /* 页2：看对方的换位话 */
   var h = '';
   h += '<button class="fam-dock-item' + (FAM.subtab === primary ? ' fam-dock-item--active' : '') + '" data-action="fam-subtab" data-tab="' + primary + '">' + famEsc(map[primary]) + '</button>';
   h += '<button class="fam-dock-item' + (FAM.subtab === secondary ? ' fam-dock-item--active' : '') + '" data-action="fam-subtab" data-tab="' + secondary + '">' + famEsc(map[secondary]) + '</button>';
@@ -8143,6 +8144,8 @@ function famRenderLedger(){
 /* 下钻屏：按子页签渲染 */
 function famRenderGraph(){
   var t = FAM.subtab || famDefaultSubtab();
+  /* 兜底：旧会话残留的页签 id（lanes/consensus/mine）一律回落到两个功能页之一 */
+  if (t !== 'mine-mirror' && t !== 'other-pair') t = famDefaultSubtab();
   if (FAM.offline && (t === 'mine-mirror' || t === 'other-pair' || t === 'lanes')) {
     return '<div class="fam-graph"><div class="fam-graph-empty">暂时连不上服务，稍后会自动重试。也可以点上方「立即重试」。</div></div>';
   }
