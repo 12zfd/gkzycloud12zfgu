@@ -1416,7 +1416,7 @@ body.fam-standalone .fam-dock{ display:flex; gap:8px; }
           <i class="fa-solid fa-user" data-page-node-id="HCPBE9YOuVaziD1sHmsLj8"></i>
         </div>
         <div style="flex:1 1 auto;min-width:0" data-page-node-id="QYx7nKdy9vqzpwQugW4gNR">
-          <div style="font-size:var(--t-xl);font-weight:700;letter-spacing:-.3px" data-page-node-id="yhXKmBG2RZ3fmC5B3NPD2W">同学，你好</div>
+          <div style="font-size:var(--t-xl);font-weight:700;letter-spacing:-.3px" id="mine-username" data-page-node-id="yhXKmBG2RZ3fmC5B3NPD2W">同学，你好</div>
           <div style="font-size:var(--t-xs);color:rgba(255,255,255,.86);margin-top:3px" id="mine-sub" data-page-node-id="EOyMq1EWwMu1beRW3BdRex">
             尚未填写分数
           </div>
@@ -1517,6 +1517,9 @@ body.fam-standalone .fam-dock{ display:flex; gap:8px; }
     <i class="fa-solid fa-users"></i><span>家庭</span>
   </button>
   <!-- D-DOMAIN-TAB-END -->
+  <button class="tab-item" data-action="nav-to" data-target="mine">
+    <i class="fa-solid fa-user"></i><span>我的</span>
+  </button>
 </nav>
 
 <!-- =========================================================================
@@ -5798,9 +5801,13 @@ const Controller = {
           if (user) { Controller._authSet(token, user); Controller.renderAuthRow(); }
           else { Controller._authClear(); }
         })
-        .catch(() => {
-          // 503 / 网络不可达：本地游客降级，不弹窗、不白屏
-          Controller._authClear();
+        .catch((err) => {
+          /* 只有「token 明确无效」（401）才清会话；
+           * 网络/冷启动/503 等瞬时失败 → 保留 token 静默保持登录，
+           * 否则 Render 免费实例一次冷启动就把用户登出（实测踩坑）。 */
+          const msg = String((err && err.message) || '');
+          if (msg.indexOf('401') > -1) Controller._authClear();
+          Controller.renderAuthRow();
         });
       return;
     }
@@ -5888,9 +5895,15 @@ const Controller = {
   /** 我的页「退出登录」行：仅当存在 token 时显示 */
   renderAuthRow(){
     const row = Utils.$('mine-logout-row');
-    if (!row) return;
     const hasToken = !!Controller._authToken();
-    row.classList.toggle('is-hidden', !hasToken);
+    if (row) row.classList.toggle('is-hidden', !hasToken);
+    /* 用户信息卡：登录后显示昵称，未登录回落默认文案（登录态可见 = 「有记忆」的直接证据） */
+    const nameEl = Utils.$('mine-username');
+    if (nameEl) {
+      const user = hasToken ? Controller._authUser() : null;
+      const who = user && (user.display_name || user.username);
+      nameEl.textContent = who ? (who + '，你好') : '同学，你好';
+    }
   },
 
   /* ------------------------------------------------------------------
