@@ -7112,13 +7112,16 @@ function famEnsureView(){
           '</div>' +
           '<div class="fam-compare-result" id="fam-cmp-result"></div>' +
         '</div>' +
-        '<div class="fam-shell" id="fam-shell" hidden>' +
+      '</div>' +
+
+      /* ============ 独立图形壳 + 家庭底栏：必须是 fam-main 的兄弟节点 ============
+       * 不能嵌进 fam-main —— body.fam-standalone 会 display:none 隐藏 fam-main（藏 legacy 文本布局），
+       * 壳若在里面会被一起隐藏 → 选完身份全屏空白（2026-10-18 线上实锤）。两者只切显隐，不卸载。 */
+      '<div class="fam-shell" id="fam-shell" hidden>' +
           '<div class="fam-overview" id="fam-overview"></div>' +
           '<div class="fam-subtabs" id="fam-subtabs"></div>' +
           '<div class="fam-graph" id="fam-graph"></div>' +
         '</div>' +
-        '<div class="fam-dock" id="fam-dock"></div>' +
-      '</div>' +
     '</div>';
   var app = document.getElementById('app');
   if (app) app.appendChild(sec);
@@ -8000,7 +8003,7 @@ function famRenderShell(){
   var subtabs = famRenderSubtabs();
   var graph = famRenderGraph();
   var dock = famRenderDock();
-  shell.innerHTML = idbar + overview + subtabs + graph + dock;
+  shell.innerHTML = idbar + overview + subtabs + graph + '<div class="fam-dock">' + dock + '</div>';
 }
 
 /* 独立壳底栏（含退出家庭；其余 dock 项用本地子页签切换，避免新增第二个 click 监听） */
