@@ -92,8 +92,14 @@ function famEnsureView(){
         '<div class="fam-gate-card">' +
           '<div class="fam-gate-icon"><i class="fa-solid fa-people-roof"></i></div>' +
           '<div class="fam-gate-title">这个家里，你是哪位？</div>' +
-          '<div class="fam-gate-sub">选一次就记住。学生看到的画面是「爸妈的话换位给我听」，家长看到的是「孩子的话换位给我听」——两边不是同一个页面。</div>' +
+          '<div class="fam-gate-sub">一句话：你说的话，家人看到的是更温和的说法；家人说的话，你看到的也是温和版。<b>原话只有自己看得到。</b></div>' +
           '<div class="fam-roles" id="fam-roles"></div>' +
+          '<div style="text-align:left;font-size:12px;line-height:1.9;color:#5A5C74;background:#F7F7FB;border-radius:12px;padding:10px 12px;margin-top:12px">' +
+            '<b style="color:#222">怎么用（3 步）：</b><br>' +
+            '① 选一个身份（你现在是谁就选谁）<br>' +
+            '② 在「写句话」里写下想说的原话<br>' +
+            '③ 打开对方那一栏，看换位后的温和版' +
+          '</div>' +
           '<div class="fam-gate-note">不用注册、不用邀请码；选错了随时能换，对话内容不会丢。</div>' +
         '</div>' +
       '</div>' +
@@ -192,10 +198,10 @@ function famRenderSecHead(){
  *   现在由**身份门**承载 —— 进去时选一次、本地记住、随时可换。
  *   动作名保持不变，从而不破坏「data-action 与 case 双向覆盖」的静态门禁。 */
 var FAM_IDENTITY_HINT = {
-  student: '我看到的是「爸妈的话」',
-  father:  '我看到的是「孩子的话」',
-  mother:  '我看到的是「孩子的话」',
-  teacher: '我看到的是「孩子的话」'
+  student: '说的话给爸妈看',
+  father:  '说的话给孩子看',
+  mother:  '说的话给孩子看',
+  teacher: '说的话给孩子看'
 };
 function famRenderRoles(){
   var box = document.getElementById('fam-roles');
@@ -996,13 +1002,14 @@ function famNum(n){ return (n == null ? 0 : n); }
 
 /* 子页签：学生端 我的话/爸妈的话/共识/我的志愿表；家长端 分歧/孩子的话/共识/我的志愿表 */
 function famSubtabDefs(){
+  /* 页签用大白话：学生视角 = 「我说的话 / 爸妈那边 / 商量进度 / 志愿表」 */
   return famIsStudent()
-    ? [['mine-mirror','我的话'],['other-pair','爸妈的话'],['consensus','共识'],['mine','我的志愿表']]
-    : [['lanes','分歧'],['other-pair','孩子的话'],['consensus','共识'],['mine','我的志愿表']];
+    ? [['mine-mirror','我说的话'],['other-pair','爸妈那边'],['consensus','商量进度'],['mine','我的志愿表']]
+    : [['lanes','要商量的事'],['other-pair','孩子那边'],['consensus','商量进度'],['mine','我的志愿表']];
 }
 function famDefaultSubtab(){ return famIsStudent() ? 'mine-mirror' : 'lanes'; }
 function famDockMap(){
-  return { 'mine-mirror':'说句话', 'lanes':'分歧', 'other-pair':(famIsStudent()?'爸妈的话':'孩子的话'), 'consensus':'共识', 'mine':'我的志愿表' };
+  return { 'mine-mirror':'写句话', 'lanes':'要商量', 'other-pair':(famIsStudent()?'爸妈那边':'孩子那边'), 'consensus':'商量进度', 'mine':'志愿表' };
 }
 
 /* 独立壳总渲染：身份条 + 概览 + 子页签 + 下钻 + 底栏（仅家庭态显示） */
@@ -1063,6 +1070,9 @@ function famRenderOverview(){
   h += '<div class="fam-overview-top">' + famRenderRing(pct, settled, total) +
        '<div class="fam-overview-meta"><b>' + settled + ' / ' + total + ' 已定</b>' +
        '<span>待决 ' + deferred + ' · 未表态 ' + famNum(pg.pending) + '</span></div></div>';
+  /* ★ 一句话讲清「换位」：家人看到的不是原话，是换位后的温和版；原话只有自己看得到 */
+  h += '<div style="font-size:12px;line-height:1.8;color:#5A5C74;background:#F7F7FB;border-radius:12px;padding:10px 12px;margin:10px 0 2px;text-align:left">' +
+    '<b style="color:#222">一句话：</b>你在「写句话」里写原话 → 我们换成家人容易听进去的说法给他们看；家人的话也会换成温和版给你。<b>原话只有自己看得到。</b></div>';
   h += famRenderAxisbar();
   h += famRenderLedger();
   h += '<div class="fam-emotion-disclaimer">本产品自编沟通口径：情绪与伤人性为「智愿」自编沟通口径，用于把话说轻，不是心理学测评或诊断。</div>';
@@ -1161,7 +1171,7 @@ function famRenderMirrorList(mine){
     if (!mine && famMsgIsMine(m)) continue;
     h += famRenderMessageCard(m, mine);
   }
-  if (!h) h += '<div class="fam-graph-empty">' + famEsc(famIsStudent() ? '你和爸妈还没有对照的内容，去「说句话」写几句试试。' : '你和孩子还没有对照的内容。') + '</div>';
+  if (!h) h += '<div class="fam-graph-empty">' + famEsc(famIsStudent() ? '你和爸妈还没有对照的内容，去「写句话」说几句试试。' : '你和孩子还没有对照的内容，去「写句话」说几句试试。') + '</div>';
   /* ★ 独立壳的发消息入口：legacy composer 在 fam-main 里被 standalone CSS 隐藏，
    *   不补这里 → 家庭主界面没有任何能打字的地方（2026-10-18 线上实锤）。 */
   if (mine) {
