@@ -687,6 +687,9 @@ function famLoadFamily(silent){
       FAM.fetched = true;
       famStopWake();
       famShowBanner(false);
+      /* ★ 数据到达即重渲染独立壳：冷启动期间先渲染了「暂时连不上」空态页，
+       *   不重渲染的话用户会一直停在空态页，点一下页签才恢复（线上实测）。 */
+      famRenderShell();
       /* ★ 房间号这一刻才确定（可能回落到 rooms[0]），共识与志愿表都按 room_id 归属，
        *   所以放在这里读，而不是和 famLoadFamily 同时打 —— 否则第一发 consensus 会因
        *   FAM.roomId 还是空而直接 return，家长端永远看不到分歧项。 */
@@ -714,6 +717,7 @@ function famLoadTimeline(){
       // ★ 成功即收横幅（时间线数据已就绪，不必再等 famLoadFamily 完整链路）
       famStopWake();
       famShowBanner(false);
+      famRenderShell();   /* ★ 数据到达即刷新两页壳（冷启动空态自动恢复） */
     })
     .catch(function(err){
       var waking = famIsWaking(err);
