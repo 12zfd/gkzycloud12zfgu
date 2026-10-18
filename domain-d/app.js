@@ -808,11 +808,12 @@ if (typeof Controller !== 'undefined') {
     });
   };
   Controller.famSend = function(){
-    var input = document.getElementById('fam-input');
+    /* 独立壳优先：standalone 下 legacy #fam-input 被 CSS 隐藏，读到它等于读到空值 */
+    var input = document.getElementById('fam-input-shell') || document.getElementById('fam-input');
     if (!input) return;
     var text = input.value.trim();
-    if (!text) { var h = document.getElementById('fam-send-hint'); if (h) h.textContent = '原话不能为空'; return; }
-    var hint = document.getElementById('fam-send-hint'); if (hint) hint.textContent = '发送中…';
+    if (!text) { var h = document.getElementById('fam-send-hint-shell') || document.getElementById('fam-send-hint'); if (h) h.textContent = '原话不能为空'; return; }
+    var hint = document.getElementById('fam-send-hint-shell') || document.getElementById('fam-send-hint'); if (hint) hint.textContent = '发送中…';
     famApiSend('POST', '/api/family-messages', {
       userId: famUid(), room_id: FAM.roomId, sender_role: FAM.role || 'student',
       raw_text: text, auto_translate: true
@@ -824,7 +825,7 @@ if (typeof Controller !== 'undefined') {
         FAM.roomId = String(saved.room_id);
         try { window.localStorage.setItem('zy_family_room', FAM.roomId); } catch (e) {}
       }
-      famLoadFamily(true).then(famLoadTimeline);
+      famLoadFamily(true).then(famLoadTimeline).then(famRenderShell).catch(function(){});   /* ★ 壳内发送后刷新下钻视图 */
     }).catch(function(err){
       if (hint) hint.textContent = famIsWaking(err) ? '服务唤醒中，请稍后重试' : '发送失败，请重试';
       if (famIsWaking(err) && !FAM.fetched) { famShowBanner(true); famStartWake(); }
@@ -872,6 +873,7 @@ if (typeof Controller !== 'undefined') {
           m.translation_status = saved.translation_status;
           if (saved.translation_version != null) m.translation_version = saved.translation_version;
           famRenderTimeline();
+          famRenderShell();   /* ★ 独立壳的消息卡也要刷新译文 */
         }
       })
       .catch(function(err){
@@ -898,9 +900,10 @@ if (typeof Controller !== 'undefined') {
     return famLoadFamily(false);
   };
   Controller.famCmpRun = function(){
-    var sa = document.getElementById('fam-cmp-a');
-    var sb = document.getElementById('fam-cmp-b');
-    var box = document.getElementById('fam-cmp-result');
+    /* 独立壳优先：standalone 下 legacy 控件被 CSS 隐藏 */
+    var sa = document.getElementById('fam-cmp-a-shell') || document.getElementById('fam-cmp-a');
+    var sb = document.getElementById('fam-cmp-b-shell') || document.getElementById('fam-cmp-b');
+    var box = document.getElementById('fam-cmp-result-shell') || document.getElementById('fam-cmp-result');
     if (!sa || !sb) return;
     var ra = sa.value, rb = sb.value;
     if (ra === rb) {
@@ -967,7 +970,7 @@ function famCmpBucket(title, list, kind){
 }
 
 function famRenderCompare(data){
-  var box = document.getElementById('fam-cmp-result');
+  var box = document.getElementById('fam-cmp-result-shell') || document.getElementById('fam-cmp-result');
   if (!box) return;
   if (!data) { box.innerHTML = ''; return; }
   var counts = data.counts || {};
@@ -1150,7 +1153,7 @@ function famRenderMirrorList(mine){
     h += '<div class="fam-graph-empty">' + famEsc(famIsStudent()
       ? '还没有爸妈的消息——先在下面写下你的想法，系统会把它换位成爸妈更容易听进去的说法。'
       : '孩子还没发言——你可以先把担心写下来，系统会把它换位成孩子更容易听进去的说法。') + '</div>';
-    return h;
+    /* 不在此处 return：落到下方统一补 composer（空态也要能直接打字） */
   }
   for (var i = 0; i < list.length; i++) {
     var m = list[i];
@@ -1159,6 +1162,17 @@ function famRenderMirrorList(mine){
     h += famRenderMessageCard(m, mine);
   }
   if (!h) h += '<div class="fam-graph-empty">' + famEsc(famIsStudent() ? '你和爸妈还没有对照的内容，去「说句话」写几句试试。' : '你和孩子还没有对照的内容。') + '</div>';
+  /* ★ 独立壳的发消息入口：legacy composer 在 fam-main 里被 standalone CSS 隐藏，
+   *   不补这里 → 家庭主界面没有任何能打字的地方（2026-10-18 线上实锤）。 */
+  if (mine) {
+    h += '<div class="fam-composer fam-composer--shell">' +
+      '<div class="fam-composer-row">' +
+        '<textarea id="fam-input-shell" placeholder="把想对家人说的话原样写下来（双向换位翻译只转译，不改写你的原话）"></textarea>' +
+        '<button class="btn btn--brand" data-action="fam-send">发送</button>' +
+      '</div>' +
+      '<div class="fam-send-hint" id="fam-send-hint-shell"></div>' +
+    '</div>';
+  }
   return h;
 }
 
@@ -1359,6 +1373,17 @@ function famRenderMineGraph(){
       h += '<div class="fam-mine-diff">与' + famEsc(famIsStudent() ? '爸妈' : '孩子') + '的分歧项：<b>' + famNum(FAM.progress.total) + '</b> 项（已定 <b>' + famNum(FAM.progress.settled) + '</b> · 待决 <b>' + famNum(FAM.progress.deferred) + '</b> · 未表态 <b>' + Math.max(0, waiting) + '</b>）</div>';
     }
   }
+  /* ★ 双志愿表对比：legacy 控件在 fam-main 里被 standalone CSS 隐藏，独立壳补一套
+   *   （famCmpRun / famRenderCompare 会优先读 -shell id）。 */
+  h += '<div class="fam-compare fam-compare--shell">' +
+    '<div class="fam-compare-head"><b>双志愿表对比</b><span class="fam-compare-sub">只展示，不写入共识</span></div>' +
+    '<div class="fam-compare-controls">' +
+      '<label class="fam-cmp-label">角色 A<select id="fam-cmp-a-shell" class="fam-cmp-select">' + famCmpOptions('student') + '</select></label>' +
+      '<label class="fam-cmp-label">角色 B<select id="fam-cmp-b-shell" class="fam-cmp-select">' + famCmpOptions('father') + '</select></label>' +
+      '<button class="btn btn--brand" data-action="fam-cmp-run">对比</button>' +
+    '</div>' +
+    '<div class="fam-compare-result" id="fam-cmp-result-shell"></div>' +
+  '</div>';
   h += '</div></div>';
   return h;
 }
